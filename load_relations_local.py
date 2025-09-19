@@ -9,6 +9,8 @@ cur = conn.cursor()
 
 # SCHEMA
 cur.executescript("""
+
+DROP TABLE IF EXISTS pokemon;
 CREATE TABLE IF NOT EXISTS pokemon (
     pokemon_id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
