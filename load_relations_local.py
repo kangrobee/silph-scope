@@ -58,6 +58,34 @@ CREATE TABLE IF NOT EXISTS encounter_methods (
     name TEXT NOT NULL
 );
 
+
+CREATE TABLE IF NOT EXISTS evolution_chains (
+    evolution_chain_id INTEGER PRIMARY KEY,
+    evolution_chain_id2 INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS evolution_triggers (
+    evolution_trigger_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS genders (
+    gender_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS generations (
+    generation_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+
+CREATE TABLE IF NOT EXISTS growth_rates (
+    growth_rate_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+
 CREATE TABLE IF NOT EXISTS items (
     item_id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -65,6 +93,25 @@ CREATE TABLE IF NOT EXISTS items (
     fling_power INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS item_attributes (
+    item_attribute_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS item_categories (
+    item_category_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS item_fling_effects (
+    item_fling_effect_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS item_pockets (
+    item_pocket_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
 
 
 CREATE TABLE IF NOT EXISTS locations (
@@ -187,6 +234,7 @@ def get_Pokemon(data): return (data["id"], data["name"], data["height"], data["w
 def get_Abilities(data): return (data["id"], data["name"], data["generation"]["name"])
 def get_Moves(data): return (data["id"], data["name"], data["generation"]["name"], data["power"], data["accuracy"], data["pp"], data["priority"])
 def get_Id_Name(data): return (data["id"], data["name"])
+def get_Evolution_Chain(data): return (data["id"], data["id"])
 def get_Machine(data): return (data["id"], data["item"]["name"], data["move"]["name"])
 def get_Version_Group(data): return (data["id"], data["name"], data["order"])
 def get_Location_Area(data): return (data["id"], data["location"]["name"], data["name"])
@@ -203,7 +251,16 @@ TABLE_CONFIG = [
     {"name": "encounter_conds", "path": "./PokeData/api/v2/encounter-condition", "columns": ["encounter_id","name"], "extract": get_Id_Name},
     {"name": "encounter_values", "path": "./PokeData/api/v2/encounter-condition-value", "columns": ["encounter_value_id","name"], "extract": get_Id_Name},
     {"name": "encounter_methods", "path": "./PokeData/api/v2/encounter-method", "columns": ["encounter_method_id","name"], "extract": get_Id_Name},
+    {"name": "evolution_chains", "path": "./PokeData/api/v2/evolution-chain", "columns": ["evolution_chain_id", "evolution_chain_id2"], "extract": get_Evolution_Chain},
+    {"name": "evolution_triggers", "path": "./PokeData/api/v2/evolution-trigger", "columns": ["evolution_trigger_id","name"], "extract": get_Id_Name},
+    {"name": "genders", "path": "./PokeData/api/v2/gender", "columns": ["gender_id","name"], "extract": get_Id_Name},
+    {"name": "generations", "path": "./PokeData/api/v2/generation", "columns": ["generation_id","name"], "extract": get_Id_Name},
+    {"name": "growth_rates", "path": "./PokeData/api/v2/growth-rate", "columns": ["growth_rate_id","name"], "extract": get_Id_Name},
     {"name": "items", "path": "./PokeData/api/v2/item", "columns": ["item_id","name", "cost", "fling_power"], "extract": get_Item},
+    {"name": "item_attributes", "path": "./PokeData/api/v2/item-attribute", "columns": ["item_attribute_id","name"], "extract": get_Id_Name},
+    {"name": "item_categories", "path": "./PokeData/api/v2/item-category", "columns": ["item_category_id","name"], "extract": get_Id_Name},
+    {"name": "item_fling_effects", "path": "./PokeData/api/v2/item-fling-effect", "columns": ["item_fling_effect_id","name"], "extract": get_Id_Name},
+    {"name": "item_pockets", "path": "./PokeData/api/v2/item-pocket", "columns": ["item_pocket_id","name"], "extract": get_Id_Name},
     {"name": "locations", "path": "./PokeData/api/v2/location", "columns": ["location_id","name"], "extract": get_Id_Name},
     {"name": "location_areas", "path": "./PokeData/api/v2/location-area", "columns": ["location_area_id","location_name", "name"], "extract": get_Location_Area},
     {"name": "machines", "path": "./PokeData/api/v2/machine", "columns": ["machine_id","item_name", "move_name"], "extract": get_Machine},
@@ -243,7 +300,7 @@ def load_table(cur, cfg):
             data = json.load(f)
 
         values = cfg["extract"](data)
-        placeholders = ", ".join(["?"] * len(values))
+        placeholders = "?" if isinstance(values, int) else ", ".join(["?"] * len(values))
         columns_str = ", ".join(cfg["columns"])
         cur.execute(f"INSERT OR IGNORE INTO {cfg['name']} ({columns_str}) VALUES ({placeholders})", values)
 
