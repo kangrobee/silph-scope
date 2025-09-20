@@ -16,7 +16,13 @@ CREATE TABLE IF NOT EXISTS pokemon (
     name TEXT NOT NULL,
     height INTEGER,
     weight INTEGER,
-    base_experience INTEGER
+    base_experience INTEGER,
+    hp INTEGER,
+    attack INTEGER,
+    defense INTEGER,
+    special_attack INTEGER,
+    special_defense INTEGER,
+    speed INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS abilities (
@@ -232,7 +238,7 @@ CREATE TABLE IF NOT EXISTS pokemon_abilities (
 
 
 # Extractors
-def get_Pokemon(data): return (data["id"], data["name"], data["height"], data["weight"], data["base_experience"])
+def get_Pokemon(data): return (data["id"], data["name"], data["height"], data["weight"], data["base_experience"], data["stats"][0]["base_stat"], data["stats"][1]["base_stat"], data["stats"][2]["base_stat"], data["stats"][3]["base_stat"], data["stats"][4]["base_stat"], data["stats"][5]["base_stat"])
 def get_Abilities(data): return (data["id"], data["name"], data["generation"]["name"])
 def get_Moves(data): return (data["id"], data["name"], data["generation"]["name"], data["power"], data["accuracy"], data["pp"], data["priority"])
 def get_Id_Name(data): return (data["id"], data["name"])
@@ -245,7 +251,7 @@ def get_Natures(data): return (data["id"], data["name"], data["increased_stat"][
 
 # Table config
 TABLE_CONFIG = [
-    {"name": "pokemon", "path": "./PokeData/api/v2/pokemon", "columns": ["pokemon_id","name","height","weight","base_experience"], "extract": get_Pokemon},
+    {"name": "pokemon", "path": "./PokeData/api/v2/pokemon", "columns": ["pokemon_id","name","height","weight","base_experience", "hp", "attack", "defense", "special_attack", "special_defense", "speed"], "extract": get_Pokemon},
     {"name": "abilities", "path": "./PokeData/api/v2/ability", "columns": ["ability_id","name","generation"], "extract": get_Abilities},
     {"name": "moves", "path": "./PokeData/api/v2/move", "columns": ["move_id","name","generation","power","accuracy","pp","priority"], "extract": get_Moves},
     {"name": "berries", "path": "./PokeData/api/v2/berry", "columns": ["berry_id","name"], "extract": get_Id_Name},
