@@ -10,7 +10,7 @@ cur = conn.cursor()
 # SCHEMA
 cur.executescript("""
 
-DROP TABLE IF EXISTS pokemon;
+
 CREATE TABLE IF NOT EXISTS pokemon (
     pokemon_id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -233,6 +233,14 @@ CREATE TABLE IF NOT EXISTS pokemon_abilities (
     FOREIGN KEY (ability_id) REFERENCES abilities(ability_id)
 );
 
+CREATE TABLE IF NOT EXISTS pokemon_types (
+    pokemon_id INTEGER,
+    type_id INTEGER,
+    PRIMARY KEY (pokemon_id, type_id),
+    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
+    FOREIGN KEY (type_id) REFERENCES types(type_id)
+)
+
 
 """)
 
@@ -332,6 +340,27 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
         if result:
             ability_id = result[0]
             cur.execute("INSERT OR IGNORE INTO pokemon_abilities (pokemon_id, ability_id) VALUES (?, ?)", (pokemon_id, ability_id))
+
+
+# Loader for pokemon_types
+
+for folder in os.listdir("./PokeData/api/v2/pokemon"):
+    folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
+    if not os.path.isdir(folder_path): continue
+    json_path = os.path.join(folder_path, "index.json")
+    if not os.path.exists(json_path): continue
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    pokemon_id = data["id"]
+    for type in data.get("types", []):
+        type_name = type["type"]["name"]
+        cur.execute("SELECT type_id FROM types WHERE name = ?", (type_name,))
+        result = cur.fetchone()
+        if result:
+            type_id = result[0]
+            cur.execute("INSERT OR IGNORE INTO pokemon_types (pokemon_id, type_id) VALUES (?, ?)", (pokemon_id, type_id))
+
+
 
 
 
