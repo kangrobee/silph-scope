@@ -9,8 +9,6 @@ cur = conn.cursor()
 
 # SCHEMA
 cur.executescript("""
-
-
 CREATE TABLE IF NOT EXISTS pokemon (
     pokemon_id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -24,6 +22,12 @@ CREATE TABLE IF NOT EXISTS pokemon (
     special_defense INTEGER,
     speed INTEGER
 );
+
+CREATE TABLE IF NOT EXISTS species (
+    species_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
 
 CREATE TABLE IF NOT EXISTS abilities (
     ability_id INTEGER PRIMARY KEY,
@@ -239,8 +243,15 @@ CREATE TABLE IF NOT EXISTS pokemon_types (
     PRIMARY KEY (pokemon_id, type_id),
     FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
     FOREIGN KEY (type_id) REFERENCES types(type_id)
-)
+);
 
+CREATE TABLE IF NOT EXISTS pokemon_species (
+    pokemon_id INTEGER,
+    species_id INTEGER,
+    PRIMARY KEY (pokemon_id, species_id),
+    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
+    FOREIGN KEY (species_id) REFERENCES types(species_id)
+);
 
 """)
 
@@ -260,6 +271,7 @@ def get_Natures(data): return (data["id"], data["name"], data["increased_stat"][
 # Table config
 TABLE_CONFIG = [
     {"name": "pokemon", "path": "./PokeData/api/v2/pokemon", "columns": ["pokemon_id","name","height","weight","base_experience", "hp", "attack", "defense", "special_attack", "special_defense", "speed"], "extract": get_Pokemon},
+    {"name": "species", "path": "./PokeData/api/v2/pokemon-species", "columns": ["species_id","name"], "extract": get_Id_Name},
     {"name": "abilities", "path": "./PokeData/api/v2/ability", "columns": ["ability_id","name","generation"], "extract": get_Abilities},
     {"name": "moves", "path": "./PokeData/api/v2/move", "columns": ["move_id","name","generation","power","accuracy","pp","priority"], "extract": get_Moves},
     {"name": "berries", "path": "./PokeData/api/v2/berry", "columns": ["berry_id","name"], "extract": get_Id_Name},
@@ -343,7 +355,6 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
 
 
 # Loader for pokemon_types
-
 for folder in os.listdir("./PokeData/api/v2/pokemon"):
     folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
     if not os.path.isdir(folder_path): continue
@@ -359,6 +370,30 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
         if result:
             type_id = result[0]
             cur.execute("INSERT OR IGNORE INTO pokemon_types (pokemon_id, type_id) VALUES (?, ?)", (pokemon_id, type_id))
+
+
+# Loader for pokemon_species
+for folder in os.listdir("./PokeData/api/v2/pokemon"):
+    folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
+    if not os.path.isdir(folder_path): continue
+    json_path = os.path.join(folder_path, "index.json")
+    if not os.path.exists(json_path): continue
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    pokemon_id = data["id"]
+    species = data.get("species")
+    if species:
+        species_name = species['name']
+        cur.execute("SELECT species_id FROM species WHERE name = ?", (species_name,))
+        result = cur.fetchone()
+        if result:
+            species_id = result[0]
+            cur.execute(
+                "INSERT OR IGNORE INTO pokemon_species (pokemon_id, species_id) VALUES (?, ?)",
+                (pokemon_id, species_id)
+            )
+
+
 
 
 
