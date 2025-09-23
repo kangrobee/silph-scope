@@ -265,6 +265,21 @@ CREATE TABLE IF NOT EXISTS species_egg_groups (
     FOREIGN KEY (egg_group_id) REFERENCES egg_groups(egg_group_id)
 );
 
+CREATE TABLE IF NOT EXISTS pokemon_moves (
+    pokemon_id INTEGER,
+    move_id INTEGER,
+    learn_method_id INTEGER,
+    version_group_id INTEGER,
+    level_learned_at INTEGER,
+    PRIMARY KEY (pokemon_id, move_id, learn_method_id, version_group_id),
+    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
+    FOREIGN KEY (move_id) REFERENCES moves(move_id),
+    FOREIGN KEY (learn_method_id) REFERENCES move_learn_methods(move_learn_method_id),
+    FOREIGN KEY (version_group_id) REFERENCES version_groups(version_group_id)
+
+);
+
+
 """)
 
 
@@ -421,6 +436,44 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
                 "INSERT OR IGNORE INTO pokemon_species (pokemon_id, species_id) VALUES (?, ?)",
                 (pokemon_id, species_id)
             )
+
+
+# Loader for pokemon_moves
+for folder in os.listdir("./PokeData/api/v2/pokemon"):
+    folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
+    if not os.path.isdir(folder_path): continue
+    json_path = os.path.join(folder_path, "index.json")
+    if not os.path.exists(json_path): continue
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    pokemon_id = data["id"]
+    for move in data.get("moves", []):
+        move_name = move["name"]
+        cur.execute("SELECT move_id FROM moves WHERE name = ?", (move_name,))
+        result = cur.fetchone()
+        if result:
+            move_id = result[0]
+
+        for version_group in data.get(move['version_group_details']):
+            level_learned_at = version_group['level_leared_at']
+
+            method_name = version_group['move_learn_method']['name']
+            cur.execute("SELECT move_learn_method_id FROM move_learn_methods WHERE name = ?", (method_name,))
+            result = cur.fetchone()
+            if result:
+                move_learn_method_id = result[0]
+
+            version_group_name = version_group['version_group']['name']
+            cur.execute("SELECT version_group_id FROM version_groups WHERE name = ?", (version_group_name,))
+            result = cur.fetchone()
+            if result:
+                version_group_id = result[0]
+
+
+        cur.execute("INSERT OR IGNORE INTO species_egg_groups (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at) VALUES (?, ?)",
+            (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at))
+
+
 
 
 conn.commit()
