@@ -50,8 +50,9 @@ CREATE TABLE IF NOT EXISTS berries (
     name TEXT NOT NULL
 );
 
+DROP TABLE IF EXISTS egg_groups;
 CREATE TABLE IF NOT EXISTS egg_groups (
-    egg_id INTEGER PRIMARY KEY,
+    egg_group_id INTEGER PRIMARY KEY,
     name TEXT NOT NULL
 );
 
@@ -245,12 +246,23 @@ CREATE TABLE IF NOT EXISTS pokemon_types (
     FOREIGN KEY (type_id) REFERENCES types(type_id)
 );
 
+DROP TABLE IF EXISTS pokemon_species;
+
 CREATE TABLE IF NOT EXISTS pokemon_species (
     pokemon_id INTEGER,
     species_id INTEGER,
     PRIMARY KEY (pokemon_id, species_id),
     FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
     FOREIGN KEY (species_id) REFERENCES types(species_id)
+);
+
+DROP TABLE IF EXISTS species_egg_groups;
+CREATE TABLE IF NOT EXISTS species_egg_groups (
+    species_id INTEGER,
+    egg_group_id INTEGER,
+    PRIMARY KEY (species_id, egg_group_id),
+    FOREIGN KEY (species_id) REFERENCES species(species_id),
+    FOREIGN KEY (egg_group_id) REFERENCES egg_groups(egg_group_id)
 );
 
 """)
@@ -275,7 +287,7 @@ TABLE_CONFIG = [
     {"name": "abilities", "path": "./PokeData/api/v2/ability", "columns": ["ability_id","name","generation"], "extract": get_Abilities},
     {"name": "moves", "path": "./PokeData/api/v2/move", "columns": ["move_id","name","generation","power","accuracy","pp","priority"], "extract": get_Moves},
     {"name": "berries", "path": "./PokeData/api/v2/berry", "columns": ["berry_id","name"], "extract": get_Id_Name},
-    {"name": "egg_groups", "path": "./PokeData/api/v2/egg-group", "columns": ["egg_id","name"], "extract": get_Id_Name},
+    {"name": "egg_groups", "path": "./PokeData/api/v2/egg-group", "columns": ["egg_group_id","name"], "extract": get_Id_Name},
     {"name": "encounter_conds", "path": "./PokeData/api/v2/encounter-condition", "columns": ["encounter_id","name"], "extract": get_Id_Name},
     {"name": "encounter_values", "path": "./PokeData/api/v2/encounter-condition-value", "columns": ["encounter_value_id","name"], "extract": get_Id_Name},
     {"name": "encounter_methods", "path": "./PokeData/api/v2/encounter-method", "columns": ["encounter_method_id","name"], "extract": get_Id_Name},
@@ -371,6 +383,23 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
             type_id = result[0]
             cur.execute("INSERT OR IGNORE INTO pokemon_types (pokemon_id, type_id) VALUES (?, ?)", (pokemon_id, type_id))
 
+# Loader for species_egg_groups
+for folder in os.listdir("./PokeData/api/v2/pokemon-species"):
+    folder_path = os.path.join("./PokeData/api/v2/pokemon-species", folder)
+    if not os.path.isdir(folder_path): continue
+    json_path = os.path.join(folder_path, "index.json")
+    if not os.path.exists(json_path): continue
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    species_id = data["id"]
+    for egg_group in data.get("egg_groups", []):
+        egg_group_name = egg_group["name"]
+        cur.execute("SELECT egg_group_id FROM egg_groups WHERE name = ?", (egg_group_name,))
+        result = cur.fetchone()
+        if result:
+            egg_group_id = result[0]
+            cur.execute("INSERT OR IGNORE INTO species_egg_groups (species_id, egg_group_id) VALUES (?, ?)", (species_id, egg_group_id))
+
 
 # Loader for pokemon_species
 for folder in os.listdir("./PokeData/api/v2/pokemon"):
@@ -392,11 +421,6 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
                 "INSERT OR IGNORE INTO pokemon_species (pokemon_id, species_id) VALUES (?, ?)",
                 (pokemon_id, species_id)
             )
-
-
-
-
-
 
 
 conn.commit()
