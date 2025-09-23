@@ -265,18 +265,18 @@ CREATE TABLE IF NOT EXISTS species_egg_groups (
     FOREIGN KEY (egg_group_id) REFERENCES egg_groups(egg_group_id)
 );
 
+DROP TABLE IF EXISTS pokemon_moves;
 CREATE TABLE IF NOT EXISTS pokemon_moves (
     pokemon_id INTEGER,
     move_id INTEGER,
-    learn_method_id INTEGER,
+    move_learn_method_id INTEGER,
     version_group_id INTEGER,
     level_learned_at INTEGER,
-    PRIMARY KEY (pokemon_id, move_id, learn_method_id, version_group_id),
+    PRIMARY KEY (pokemon_id, move_id, move_learn_method_id, version_group_id),
     FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
     FOREIGN KEY (move_id) REFERENCES moves(move_id),
-    FOREIGN KEY (learn_method_id) REFERENCES move_learn_methods(move_learn_method_id),
+    FOREIGN KEY (move_learn_method_id) REFERENCES move_learn_methods(move_learn_method_id),
     FOREIGN KEY (version_group_id) REFERENCES version_groups(version_group_id)
-
 );
 
 
@@ -448,14 +448,14 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
         data = json.load(f)
     pokemon_id = data["id"]
     for move in data.get("moves", []):
-        move_name = move["name"]
+        move_name = move["move"]["name"]
         cur.execute("SELECT move_id FROM moves WHERE name = ?", (move_name,))
         result = cur.fetchone()
         if result:
             move_id = result[0]
 
-        for version_group in data.get(move['version_group_details']):
-            level_learned_at = version_group['level_leared_at']
+        for version_group in move.get('version_group_details', []):
+            level_learned_at = version_group['level_learned_at']
 
             method_name = version_group['move_learn_method']['name']
             cur.execute("SELECT move_learn_method_id FROM move_learn_methods WHERE name = ?", (method_name,))
@@ -470,7 +470,7 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
                 version_group_id = result[0]
 
 
-        cur.execute("INSERT OR IGNORE INTO species_egg_groups (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at) VALUES (?, ?)",
+        cur.execute("INSERT OR IGNORE INTO pokemon_moves (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at) VALUES (?, ?, ?, ?, ?)",
             (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at))
 
 
