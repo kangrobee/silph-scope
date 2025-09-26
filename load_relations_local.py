@@ -8,307 +8,12 @@ conn = sqlite3.connect("silph-scope.db")
 cur = conn.cursor()
 
 # SCHEMA
-cur.executescript("""
-CREATE TABLE IF NOT EXISTS pokemon (
-    pokemon_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    height INTEGER,
-    weight INTEGER,
-    base_experience INTEGER,
-    hp INTEGER,
-    attack INTEGER,
-    defense INTEGER,
-    special_attack INTEGER,
-    special_defense INTEGER,
-    speed INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS species (
-    species_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-
-CREATE TABLE IF NOT EXISTS abilities (
-    ability_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    generation TEXT
-);
-
-CREATE TABLE IF NOT EXISTS moves (
-    move_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    generation TEXT,
-    power INTEGER,
-    accuracy INTEGER,
-    pp INTEGER,
-    priority INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS berries (
-    berry_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-DROP TABLE IF EXISTS egg_groups;
-CREATE TABLE IF NOT EXISTS egg_groups (
-    egg_group_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS encounter_conds (
-    encounter_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS encounter_values (
-    encounter_value_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS encounter_methods (
-    encounter_method_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-
-CREATE TABLE IF NOT EXISTS evolution_chains (
-    evolution_chain_id INTEGER PRIMARY KEY,
-    evolution_chain_id2 INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS evolution_triggers (
-    evolution_trigger_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS genders (
-    gender_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS generations (
-    generation_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-
-CREATE TABLE IF NOT EXISTS growth_rates (
-    growth_rate_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-
-CREATE TABLE IF NOT EXISTS items (
-    item_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    cost INTEGER,
-    fling_power INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS item_attributes (
-    item_attribute_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS item_categories (
-    item_category_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS item_fling_effects (
-    item_fling_effect_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS item_pockets (
-    item_pocket_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-
-CREATE TABLE IF NOT EXISTS locations (
-    location_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS location_areas (
-    location_area_id INTEGER PRIMARY KEY,
-    location_name TEXT NOT NULL,
-    name TEXT
-);
-
-
-CREATE TABLE IF NOT EXISTS machines (
-    machine_id INTEGER PRIMARY KEY,
-    item_name TEXT NOT NULL,
-    move_name TEXT
-);
-
-CREATE TABLE IF NOT EXISTS move_ailments (
-    move_ailment_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS move_battle_styles (
-    move_battle_style_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS move_categories(
-    move_category_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS move_damage_classes (
-    move_damage_class_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-
-CREATE TABLE IF NOT EXISTS move_learn_methods (
-    move_learn_method_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS move_targets (
-    move_target_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS natures (
-    nature_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    decreased_stat TEXT,
-    increased_stat TEXT
-);
-
-CREATE TABLE IF NOT EXISTS pokedexes (
-    pokedex_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS colors (
-    color_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS shapes (
-    shape_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS habitats (
-    habitat_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS regions (
-    region_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS stats (
-    stat_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS types (
-    type_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS versions (
-    version_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS version_groups (
-    version_group_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    order_num INTEGER
-);
-
-
-CREATE TABLE IF NOT EXISTS pokemon_abilities (
-    pokemon_id INTEGER,
-    ability_id INTEGER,
-    PRIMARY KEY (pokemon_id, ability_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (ability_id) REFERENCES abilities(ability_id)
-);
-
-CREATE TABLE IF NOT EXISTS pokemon_types (
-    pokemon_id INTEGER,
-    type_id INTEGER,
-    PRIMARY KEY (pokemon_id, type_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (type_id) REFERENCES types(type_id)
-);
-
-DROP TABLE IF EXISTS pokemon_species;
-
-CREATE TABLE IF NOT EXISTS pokemon_species (
-    pokemon_id INTEGER,
-    species_id INTEGER,
-    PRIMARY KEY (pokemon_id, species_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (species_id) REFERENCES types(species_id)
-);
-
-DROP TABLE IF EXISTS species_egg_groups;
-CREATE TABLE IF NOT EXISTS species_egg_groups (
-    species_id INTEGER,
-    egg_group_id INTEGER,
-    PRIMARY KEY (species_id, egg_group_id),
-    FOREIGN KEY (species_id) REFERENCES species(species_id),
-    FOREIGN KEY (egg_group_id) REFERENCES egg_groups(egg_group_id)
-);
-
-
-CREATE TABLE IF NOT EXISTS pokemon_moves (
-    pokemon_id INTEGER,
-    move_id INTEGER,
-    move_learn_method_id INTEGER,
-    version_group_id INTEGER,
-    level_learned_at INTEGER,
-    PRIMARY KEY (pokemon_id, move_id, move_learn_method_id, version_group_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (move_id) REFERENCES moves(move_id),
-    FOREIGN KEY (move_learn_method_id) REFERENCES move_learn_methods(move_learn_method_id),
-    FOREIGN KEY (version_group_id) REFERENCES version_groups(version_group_id)
-);
-
-DROP TABLE IF EXISTS pokemon_encounters;
-
-CREATE TABLE IF NOT EXISTS pokemon_encounters (
-    pokemon_id INTEGER,
-    version_id INTEGER,
-    location_area_id INTEGER,
-    encounter_method_id INTEGER,
-    min_level INTEGER,
-    max_level INTEGER,
-    PRIMARY KEY (pokemon_id, version_id, location_area_id, encounter_method_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (version_id) REFERENCES versions(version_id),
-    FOREIGN KEY (location_area_id) REFERENCES location_areas(location_area_id),
-    FOREIGN KEY (encounter_method_id) REFERENCES encounter_methods(encounter_method_id)
-);
-
-CREATE TABLE IF NOT EXISTS pokemon_stats (
-    pokemon_id INTEGER,
-    stat_id INTEGER,
-    value INTEGER,
-    PRIMARY KEY (pokemon_id, stat_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (stat_id) REFERENCES stats(stat_id)
-);
-
-""")
+with open("schema.sql", "r", encoding="utf-8") as f:
+    cur.executescript(f.read())
 
 
 # Extractors
-def get_Pokemon(data): return (data["id"], data["name"], data["height"], data["weight"], data["base_experience"], data["stats"][0]["base_stat"], data["stats"][1]["base_stat"], data["stats"][2]["base_stat"], data["stats"][3]["base_stat"], data["stats"][4]["base_stat"], data["stats"][5]["base_stat"])
+def get_Pokemon(data): return (data["id"], data["name"], data["height"], data["weight"], data["base_experience"])
 def get_Abilities(data): return (data["id"], data["name"], data["generation"]["name"])
 def get_Moves(data): return (data["id"], data["name"], data["generation"]["name"], data["power"], data["accuracy"], data["pp"], data["priority"])
 def get_Id_Name(data): return (data["id"], data["name"])
@@ -321,7 +26,7 @@ def get_Natures(data): return (data["id"], data["name"], data["increased_stat"][
 
 # Table config
 TABLE_CONFIG = [
-    {"name": "pokemon", "path": "./PokeData/api/v2/pokemon", "columns": ["pokemon_id","name","height","weight","base_experience", "hp", "attack", "defense", "special_attack", "special_defense", "speed"], "extract": get_Pokemon},
+    {"name": "pokemon", "path": "./PokeData/api/v2/pokemon", "columns": ["pokemon_id","name","height","weight","base_experience"], "extract": get_Pokemon},
     {"name": "species", "path": "./PokeData/api/v2/pokemon-species", "columns": ["species_id","name"], "extract": get_Id_Name},
     {"name": "abilities", "path": "./PokeData/api/v2/ability", "columns": ["ability_id","name","generation"], "extract": get_Abilities},
     {"name": "moves", "path": "./PokeData/api/v2/move", "columns": ["move_id","name","generation","power","accuracy","pp","priority"], "extract": get_Moves},
@@ -362,7 +67,7 @@ TABLE_CONFIG = [
 
 ]
 
-# Loader for generic data
+# Loader for single relations
 def load_table(cur, cfg):
     for folder in os.listdir(cfg["path"]):
         folder_path = os.path.join(cfg["path"], folder)
@@ -387,44 +92,38 @@ def load_table(cur, cfg):
 for cfg in TABLE_CONFIG:
     load_table(cur, cfg)
 
+
+ID_COLUMNS = {
+    "abilities": "ability_id",
+    "types": "type_id"
+}
 # Loader for many2many tables. Need to make a general function later.
-for folder in os.listdir("./PokeData/api/v2/pokemon"):
-    folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
-    if not os.path.isdir(folder_path):
-        continue
-    json_path = os.path.join(folder_path, "index.json")
-    if not os.path.exists(json_path):
-        continue
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    pokemon_id = data["id"]
-    for ability in data.get("abilities", []):
-        ability_name = ability["ability"]["name"]
-        cur.execute("SELECT ability_id FROM abilities WHERE name = ?", (ability_name,))
-        result = cur.fetchone()
-        if result:
-            ability_id = result[0]
-            cur.execute("INSERT OR IGNORE INTO pokemon_abilities (pokemon_id, ability_id) VALUES (?, ?)", (pokemon_id, ability_id))
+def loader(path, plural, singular, relation_name):
+    """Load Pokémon relations into the database (abilities, moves, items, etc.)."""
+    id_column = ID_COLUMNS[plural]
+    for folder in os.listdir(path):
+        folder_path = os.path.join(path, folder)
+        if not os.path.isdir(folder_path):
+            continue
+        json_path = os.path.join(folder_path, "index.json")
+        if not os.path.exists(json_path):
+            continue
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        pokemon_id = data["id"]
+        for entry in data.get(plural, []):
+            entry_name = entry[singular]["name"]
+            cur.execute(f"SELECT {id_column} FROM {plural} WHERE name = ?", (entry_name,))
+            result = cur.fetchone()
+            if result:
+                entry_id = result[0]
+                cur.execute(
+                    f"INSERT OR IGNORE INTO {relation_name} (pokemon_id, {id_column}) VALUES (?, ?)",
+                    (pokemon_id, entry_id))
 
+loader("./PokeData/api/v2/pokemon", "abilities", "ability", "pokemon_abilities")
+loader("./PokeData/api/v2/pokemon", "types", "type", "pokemon_types")
 
-# Loader for pokemon_types
-for folder in os.listdir("./PokeData/api/v2/pokemon"):
-    folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
-    if not os.path.isdir(folder_path):
-        continue
-    json_path = os.path.join(folder_path, "index.json")
-    if not os.path.exists(json_path):
-        continue
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    pokemon_id = data["id"]
-    for type in data.get("types", []):
-        type_name = type["type"]["name"]
-        cur.execute("SELECT type_id FROM types WHERE name = ?", (type_name,))
-        result = cur.fetchone()
-        if result:
-            type_id = result[0]
-            cur.execute("INSERT OR IGNORE INTO pokemon_types (pokemon_id, type_id) VALUES (?, ?)", (pokemon_id, type_id))
 
 # Loader for pokemon_stats
 for folder in os.listdir("./PokeData/api/v2/pokemon"):
@@ -510,22 +209,18 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
         result = cur.fetchone()
         if result:
             move_id = result[0]
-
         for version_group in move.get('version_group_details', []):
             level_learned_at = version_group['level_learned_at']
-
             method_name = version_group['move_learn_method']['name']
             cur.execute("SELECT move_learn_method_id FROM move_learn_methods WHERE name = ?", (method_name,))
             result = cur.fetchone()
             if result:
                 move_learn_method_id = result[0]
-
             version_group_name = version_group['version_group']['name']
             cur.execute("SELECT version_group_id FROM version_groups WHERE name = ?", (version_group_name,))
             result = cur.fetchone()
             if result:
                 version_group_id = result[0]
-
         cur.execute("INSERT OR IGNORE INTO pokemon_moves (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at) VALUES (?, ?, ?, ?, ?)",
             (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at))
 
@@ -534,13 +229,9 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
     folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
     if not os.path.isdir(folder_path):
         continue
-
-    # Load index.json to get the pokemon_id
     index_json_path = os.path.join(folder_path, "index.json")
     if not os.path.exists(index_json_path):
-
         continue
-
     with open(index_json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     pokemon_id = data["id"]
@@ -548,48 +239,36 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
     # Encounter folder
     encounter_path = os.path.join(folder_path, "encounters")
     if not os.path.isdir(encounter_path):
-
         continue
-
     for enc_file in os.listdir(encounter_path):
         if not enc_file.endswith(".json"):
             continue
-
         json_path = os.path.join(encounter_path, enc_file)
         with open(json_path, "r", encoding="utf-8") as f:
             encounters = json.load(f)
-
         for encounter in encounters:
-
             location_area_name = encounter["location_area"]["name"]
             cur.execute("SELECT location_area_id FROM location_areas WHERE name = ?", (location_area_name,))
             loc_res = cur.fetchone()
             if not loc_res:
-                print("did not find")
                 continue
             location_area_id = loc_res[0]
-
             for version_detail in encounter.get("version_details", []):
                 version_name = version_detail["version"]["name"]
                 cur.execute("SELECT version_id FROM versions WHERE name = ?", (version_name,))
                 ver_res = cur.fetchone()
                 if not ver_res:
-
                     continue
                 version_id = ver_res[0]
-
                 for detail in version_detail.get("encounter_details", []):
                     method_name = detail["method"]["name"]
                     cur.execute("SELECT encounter_method_id FROM encounter_methods WHERE name = ?", (method_name,))
                     meth_res = cur.fetchone()
                     if not meth_res:
-
                         continue
                     encounter_method_id = meth_res[0]
-
                     min_level = detail.get("min_level", 0)
                     max_level = detail.get("max_level", 0)
-
                     cur.execute("""
                         INSERT OR IGNORE INTO pokemon_encounters
                         (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level)

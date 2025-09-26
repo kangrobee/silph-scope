@@ -2,10 +2,6 @@ import sqlite3
 import pandas as pd
 
 conn = sqlite3.connect("silph-scope.db")
-df = pd.read_sql_query("select p.pokemon_id, p.name AS pokemon_name, s.species_id, s.name AS species_name FROM pokemon_species ps JOIN pokemon p ON ps.pokemon_id = p.pokemon_id JOIN species s ON ps.species_id = s.species_id where p.name = 'arcanine-hisui' ORDER BY p.pokemon_id;", conn)
-df2 = pd.read_sql_query("select p.name AS pokemon_name, m.name AS move_name, pm.move_learn_method_id, pm.version_group_id, pm.level_learned_at from pokemon_moves pm JOIN moves m ON pm.move_id = m.move_id JOIN pokemon p ON pm.pokemon_id = p.pokemon_id WHERE pokemon_name = 'arcanine-hisui' limit 50;", conn)
-df3 = pd.read_sql_query("select p.name, eg.name AS egg_group FROM pokemon p JOIN pokemon_species ps ON p.pokemon_id = ps.pokemon_id JOIN species_egg_groups seg ON ps.species_id = seg.species_id JOIN egg_groups eg ON seg.egg_group_id = eg.egg_group_id where p.name = 'crawdaunt' order by ps.species_id", conn)
-df4 = pd.read_sql_query("select * from pokemon_stats ps join pokemon p on ps.pokemon_id = p.pokemon_id where name = 'typhlosion'", conn)
 df_check = pd.read_sql_query("""
     SELECT
         pe.pokemon_id,
@@ -24,5 +20,25 @@ df_check = pd.read_sql_query("""
     ORDER BY pe.pokemon_id, v.version_id
     LIMIT 50
 """, conn)
-print(df4)
+
+df_check2 = pd.read_sql_query("""
+    SELECT
+        *
+    FROM pokemon_abilities
+    JOIN pokemon on pokemon.pokemon_id = pokemon_abilities.pokemon_id
+    JOIN abilities on pokemon_abilities.ability_id = abilities.ability_id
+    WHERE pokemon.name = 'braviary-hisui'
+""", conn)
+
+df_check3 = pd.read_sql_query("""
+    SELECT
+        *
+    FROM species_egg_groups seg
+    JOIN species s ON seg.species_id = s.species_id
+    JOIN egg_groups eg ON eg.egg_group_id = seg.egg_group_id
+    WHERE s.name = 'crawdaunt';
+""", conn)
+
+
+print(df_check3)
 conn.close()
