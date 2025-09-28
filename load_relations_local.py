@@ -2,6 +2,9 @@ import os
 import json
 import sqlite3
 import pandas as pd
+import gzip
+import requests
+
 
 # Connect
 conn = sqlite3.connect("silph-scope.db")
@@ -93,39 +96,6 @@ for cfg in TABLE_CONFIG:
     load_table(cur, cfg)
 
 
-ID_COLUMNS = {
-    "abilities": "ability_id",
-    "types": "type_id"
-}
-# Loader for many2many tables. Need to make a general function later.
-def loader(path, plural, singular, relation_name):
-    """Load Pokémon relations into the database (abilities, moves, items, etc.)."""
-    id_column = ID_COLUMNS[plural]
-    for folder in os.listdir(path):
-        folder_path = os.path.join(path, folder)
-        if not os.path.isdir(folder_path):
-            continue
-        json_path = os.path.join(folder_path, "index.json")
-        if not os.path.exists(json_path):
-            continue
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        pokemon_id = data["id"]
-        for entry in data.get(plural, []):
-            entry_name = entry[singular]["name"]
-            cur.execute(f"SELECT {id_column} FROM {plural} WHERE name = ?", (entry_name,))
-            result = cur.fetchone()
-            if result:
-                entry_id = result[0]
-                cur.execute(
-                    f"INSERT OR IGNORE INTO {relation_name} (pokemon_id, {id_column}) VALUES (?, ?)",
-                    (pokemon_id, entry_id))
-
-loader("./PokeData/api/v2/pokemon", "abilities", "ability", "pokemon_abilities")
-loader("./PokeData/api/v2/pokemon", "types", "type", "pokemon_types")
-
-
-# Loader for pokemon_stats
 for folder in os.listdir("./PokeData/api/v2/pokemon"):
     folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
     if not os.path.isdir(folder_path):
@@ -136,6 +106,26 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     pokemon_id = data["id"]
+
+    # pokemon_abilities
+    for ability in data.get("abilities", []):
+        ability_name = ability["ability"]["name"]
+        cur.execute("SELECT ability_id FROM abilities WHERE name = ?", (ability_name,))
+        result = cur.fetchone()
+        if result:
+            ability_id = result[0]
+            cur.execute("INSERT OR IGNORE INTO pokemon_abilities (pokemon_id, ability_id) VALUES (?, ?)", (pokemon_id, ability_id))
+
+    # # pokemon_types
+    for type in data.get("types", []):
+        type_name = type["type"]["name"]
+        cur.execute("SELECT type_id FROM types WHERE name = ?", (type_name,))
+        result = cur.fetchone()
+        if result:
+            type_id = result[0]
+            cur.execute("INSERT OR IGNORE INTO pokemon_types (pokemon_id, type_id) VALUES (?, ?)", (pokemon_id, type_id))
+
+    # pokemon_stats
     for stat in data.get("stats", []):
         stat_name = stat["stat"]["name"]
         cur.execute("SELECT stat_id FROM stats WHERE name = ?", (stat_name,))
@@ -145,38 +135,7 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
             stat_id = result[0]
             cur.execute("INSERT OR IGNORE INTO pokemon_stats (pokemon_id, stat_id, value) VALUES (?, ?, ?)", (pokemon_id, stat_id, value))
 
-
-# Loader for species_egg_groups
-for folder in os.listdir("./PokeData/api/v2/pokemon-species"):
-    folder_path = os.path.join("./PokeData/api/v2/pokemon-species", folder)
-    if not os.path.isdir(folder_path):
-        continue
-    json_path = os.path.join(folder_path, "index.json")
-    if not os.path.exists(json_path):
-        continue
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    species_id = data["id"]
-    for egg_group in data.get("egg_groups", []):
-        egg_group_name = egg_group["name"]
-        cur.execute("SELECT egg_group_id FROM egg_groups WHERE name = ?", (egg_group_name,))
-        result = cur.fetchone()
-        if result:
-            egg_group_id = result[0]
-            cur.execute("INSERT OR IGNORE INTO species_egg_groups (species_id, egg_group_id) VALUES (?, ?)", (species_id, egg_group_id))
-
-
-# Loader for pokemon_species
-for folder in os.listdir("./PokeData/api/v2/pokemon"):
-    folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
-    if not os.path.isdir(folder_path):
-        continue
-    json_path = os.path.join(folder_path, "index.json")
-    if not os.path.exists(json_path):
-        continue
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    pokemon_id = data["id"]
+    # pokemon_species
     species = data.get("species")
     if species:
         species_name = species['name']
@@ -186,23 +145,9 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
             species_id = result[0]
             cur.execute(
                 "INSERT OR IGNORE INTO pokemon_species (pokemon_id, species_id) VALUES (?, ?)",
-                (pokemon_id, species_id)
-            )
+                (pokemon_id, species_id))
 
-
-
-
-# Loader for pokemon_moves
-for folder in os.listdir("./PokeData/api/v2/pokemon"):
-    folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
-    if not os.path.isdir(folder_path):
-        continue
-    json_path = os.path.join(folder_path, "index.json")
-    if not os.path.exists(json_path):
-        continue
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    pokemon_id = data["id"]
+    # pokemon_moves
     for move in data.get("moves", []):
         move_name = move["move"]["name"]
         cur.execute("SELECT move_id FROM moves WHERE name = ?", (move_name,))
@@ -224,59 +169,67 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
         cur.execute("INSERT OR IGNORE INTO pokemon_moves (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at) VALUES (?, ?, ?, ?, ?)",
             (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at))
 
-# Loader for pokemon_encounters
-for folder in os.listdir("./PokeData/api/v2/pokemon"):
-    folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
+        # pokemon_encounters
+        encounter_path = os.path.join(folder_path, "encounters")
+        if not os.path.isdir(encounter_path):
+            continue
+        for enc_file in os.listdir(encounter_path):
+            if not enc_file.endswith(".json"):
+                continue
+            json_path = os.path.join(encounter_path, enc_file)
+            with open(json_path, "r", encoding="utf-8") as f:
+                encounters = json.load(f)
+            for encounter in encounters:
+                location_area_name = encounter["location_area"]["name"]
+                cur.execute("SELECT location_area_id FROM location_areas WHERE name = ?", (location_area_name,))
+                loc_res = cur.fetchone()
+                if not loc_res:
+                    continue
+                location_area_id = loc_res[0]
+                for version_detail in encounter.get("version_details", []):
+                    version_name = version_detail["version"]["name"]
+                    cur.execute("SELECT version_id FROM versions WHERE name = ?", (version_name,))
+                    ver_res = cur.fetchone()
+                    if not ver_res:
+                        continue
+                    version_id = ver_res[0]
+                    for detail in version_detail.get("encounter_details", []):
+                        method_name = detail["method"]["name"]
+                        cur.execute("SELECT encounter_method_id FROM encounter_methods WHERE name = ?", (method_name,))
+                        meth_res = cur.fetchone()
+                        if not meth_res:
+                            continue
+                        encounter_method_id = meth_res[0]
+                        min_level = detail.get("min_level", 0)
+                        max_level = detail.get("max_level", 0)
+                        cur.execute("""
+                            INSERT OR IGNORE INTO pokemon_encounters
+                            (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level))
+
+# Loader for species_egg_groups
+for folder in os.listdir("./PokeData/api/v2/pokemon-species"):
+    folder_path = os.path.join("./PokeData/api/v2/pokemon-species", folder)
     if not os.path.isdir(folder_path):
         continue
-    index_json_path = os.path.join(folder_path, "index.json")
-    if not os.path.exists(index_json_path):
+    json_path = os.path.join(folder_path, "index.json")
+    if not os.path.exists(json_path):
         continue
-    with open(index_json_path, "r", encoding="utf-8") as f:
+    with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    pokemon_id = data["id"]
-
-    # Encounter folder
-    encounter_path = os.path.join(folder_path, "encounters")
-    if not os.path.isdir(encounter_path):
-        continue
-    for enc_file in os.listdir(encounter_path):
-        if not enc_file.endswith(".json"):
-            continue
-        json_path = os.path.join(encounter_path, enc_file)
-        with open(json_path, "r", encoding="utf-8") as f:
-            encounters = json.load(f)
-        for encounter in encounters:
-            location_area_name = encounter["location_area"]["name"]
-            cur.execute("SELECT location_area_id FROM location_areas WHERE name = ?", (location_area_name,))
-            loc_res = cur.fetchone()
-            if not loc_res:
-                continue
-            location_area_id = loc_res[0]
-            for version_detail in encounter.get("version_details", []):
-                version_name = version_detail["version"]["name"]
-                cur.execute("SELECT version_id FROM versions WHERE name = ?", (version_name,))
-                ver_res = cur.fetchone()
-                if not ver_res:
-                    continue
-                version_id = ver_res[0]
-                for detail in version_detail.get("encounter_details", []):
-                    method_name = detail["method"]["name"]
-                    cur.execute("SELECT encounter_method_id FROM encounter_methods WHERE name = ?", (method_name,))
-                    meth_res = cur.fetchone()
-                    if not meth_res:
-                        continue
-                    encounter_method_id = meth_res[0]
-                    min_level = detail.get("min_level", 0)
-                    max_level = detail.get("max_level", 0)
-                    cur.execute("""
-                        INSERT OR IGNORE INTO pokemon_encounters
-                        (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level))
-
+    species_id = data["id"]
+    for egg_group in data.get("egg_groups", []):
+        egg_group_name = egg_group["name"]
+        cur.execute("SELECT egg_group_id FROM egg_groups WHERE name = ?", (egg_group_name,))
+        result = cur.fetchone()
+        if result:
+            egg_group_id = result[0]
+            cur.execute("INSERT OR IGNORE INTO species_egg_groups (species_id, egg_group_id) VALUES (?, ?)", (species_id, egg_group_id))
 
 
 conn.commit()
 cur.close()
 conn.close()
+
+

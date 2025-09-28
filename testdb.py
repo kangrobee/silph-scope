@@ -39,6 +39,12 @@ df_check3 = pd.read_sql_query("""
     WHERE s.name = 'crawdaunt';
 """, conn)
 
+df_check4 = pd.read_sql_query("""
+    SELECT
+        *
+    FROM pokemon_encounters;
+""", conn)
 
-print(df_check3)
+
+print(df_check4)
 conn.close()
