@@ -33,18 +33,19 @@ df_check2 = pd.read_sql_query("""
 df_check3 = pd.read_sql_query("""
     SELECT
         *
-    FROM species_egg_groups seg
-    JOIN species s ON seg.species_id = s.species_id
-    JOIN egg_groups eg ON eg.egg_group_id = seg.egg_group_id
-    WHERE s.name = 'crawdaunt';
+    FROM pokemon_encounters;
 """, conn)
 
 df_check4 = pd.read_sql_query("""
     SELECT
-        *
-    FROM pokemon_encounters;
+        p.pokemon_id, m.name, p.name, pm.version_group_id, pm.level_learned_at, vg.name
+    FROM pokemon_moves pm
+    join moves m on m.move_id = pm.move_id
+    JOIN pokemon p on pm.pokemon_id = p.pokemon_id
+    join version_groups vg on pm.version_group_id = vg.version_group_id
+    where p.name = 'bulbasaur' and vg.name = 'crystal' order by pm.level_learned_at;
 """, conn)
 
 
-print(df_check4)
+print(df_check3)
 conn.close()

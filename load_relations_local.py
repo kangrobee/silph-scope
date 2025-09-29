@@ -95,6 +95,32 @@ def load_table(cur, cfg):
 for cfg in TABLE_CONFIG:
     load_table(cur, cfg)
 
+# Lists for executemany
+ability_list = []
+type_list = []
+stat_list = []
+species_list = []
+move_list = []
+encounter_list = []
+egg_group_list = []
+
+def build_cache(cur, table_name, id_col, name_col="name"):
+    cur.execute(f"SELECT {id_col}, {name_col} FROM {table_name}")
+    return {name: _id for _id, name in cur.fetchall()}
+
+# Example usage:
+ability_cache = build_cache(cur, "abilities", "ability_id")
+type_cache = build_cache(cur, "types", "type_id")
+move_cache = build_cache(cur, "moves", "move_id")
+move_learn_method_cache = build_cache(cur, "move_learn_methods", "move_learn_method_id")
+version_cache = build_cache(cur, "versions", "version_id")
+version_group_cache = build_cache(cur, "version_groups", "version_group_id")
+stat_cache = build_cache(cur, "stats", "stat_id")
+species_cache = build_cache(cur, "species", "species_id")
+location_area_cache = build_cache(cur, "location_areas", "location_area_id")
+encounter_method_cache = build_cache(cur, "encounter_methods", "encounter_method_id")
+egg_group_cache = build_cache(cur, "egg_groups", "egg_group_id")
+
 
 for folder in os.listdir("./PokeData/api/v2/pokemon"):
     folder_path = os.path.join("./PokeData/api/v2/pokemon", folder)
@@ -110,69 +136,53 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
     # pokemon_abilities
     for ability in data.get("abilities", []):
         ability_name = ability["ability"]["name"]
-        cur.execute("SELECT ability_id FROM abilities WHERE name = ?", (ability_name,))
-        result = cur.fetchone()
-        if result:
-            ability_id = result[0]
-            cur.execute("INSERT OR IGNORE INTO pokemon_abilities (pokemon_id, ability_id) VALUES (?, ?)", (pokemon_id, ability_id))
+        ability_id = ability_cache.get(ability_name)
+        if ability_id:
+            ability_list.append((pokemon_id, ability_id))
 
-    # # pokemon_types
-    for type in data.get("types", []):
-        type_name = type["type"]["name"]
-        cur.execute("SELECT type_id FROM types WHERE name = ?", (type_name,))
-        result = cur.fetchone()
-        if result:
-            type_id = result[0]
-            cur.execute("INSERT OR IGNORE INTO pokemon_types (pokemon_id, type_id) VALUES (?, ?)", (pokemon_id, type_id))
+    # pokemon_types
+    for type_ in data.get("types", []):
+        type_name = type_["type"]["name"]
+        type_id = type_cache.get(type_name)
+        if type_id:
+            type_list.append((pokemon_id, type_id))
 
     # pokemon_stats
     for stat in data.get("stats", []):
         stat_name = stat["stat"]["name"]
-        cur.execute("SELECT stat_id FROM stats WHERE name = ?", (stat_name,))
-        result = cur.fetchone()
+        stat_id = stat_cache.get(stat_name)
         value = stat['base_stat']
-        if result:
-            stat_id = result[0]
-            cur.execute("INSERT OR IGNORE INTO pokemon_stats (pokemon_id, stat_id, value) VALUES (?, ?, ?)", (pokemon_id, stat_id, value))
+        if stat_id:
+            stat_list.append((pokemon_id, stat_id, value))
 
     # pokemon_species
     species = data.get("species")
     if species:
         species_name = species['name']
-        cur.execute("SELECT species_id FROM species WHERE name = ?", (species_name,))
-        result = cur.fetchone()
-        if result:
-            species_id = result[0]
-            cur.execute(
-                "INSERT OR IGNORE INTO pokemon_species (pokemon_id, species_id) VALUES (?, ?)",
-                (pokemon_id, species_id))
+        species_id = species_cache.get(species_name)
+        if species_id:
+            species_list.append((pokemon_id, species_id))
 
     # pokemon_moves
     for move in data.get("moves", []):
         move_name = move["move"]["name"]
-        cur.execute("SELECT move_id FROM moves WHERE name = ?", (move_name,))
-        result = cur.fetchone()
-        if result:
-            move_id = result[0]
+        move_id = move_cache.get(move_name)
+        if not move_id:
+            continue
+
         for version_group in move.get('version_group_details', []):
             level_learned_at = version_group['level_learned_at']
             method_name = version_group['move_learn_method']['name']
-            cur.execute("SELECT move_learn_method_id FROM move_learn_methods WHERE name = ?", (method_name,))
-            result = cur.fetchone()
-            if result:
-                move_learn_method_id = result[0]
+            move_learn_method_id = move_learn_method_cache.get(method_name)
             version_group_name = version_group['version_group']['name']
-            cur.execute("SELECT version_group_id FROM version_groups WHERE name = ?", (version_group_name,))
-            result = cur.fetchone()
-            if result:
-                version_group_id = result[0]
-        cur.execute("INSERT OR IGNORE INTO pokemon_moves (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at) VALUES (?, ?, ?, ?, ?)",
-            (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at))
+            version_group_id = version_group_cache.get(version_group_name)
 
-        # pokemon_encounters
-        encounter_path = os.path.join(folder_path, "encounters")
-        if not os.path.isdir(encounter_path):
-            continue
+            if move_learn_method_id and version_group_id:
+                move_list.append((pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at))
+
+    # pokemon_encounters
+    encounter_path = os.path.join(folder_path, "encounters")
+    if os.path.isdir(encounter_path):
         for enc_file in os.listdir(encounter_path):
             if not enc_file.endswith(".json"):
                 continue
@@ -181,34 +191,24 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
                 encounters = json.load(f)
             for encounter in encounters:
                 location_area_name = encounter["location_area"]["name"]
-                cur.execute("SELECT location_area_id FROM location_areas WHERE name = ?", (location_area_name,))
-                loc_res = cur.fetchone()
-                if not loc_res:
+                location_area_id = location_area_cache.get(location_area_name)
+                if not location_area_id:
                     continue
-                location_area_id = loc_res[0]
                 for version_detail in encounter.get("version_details", []):
                     version_name = version_detail["version"]["name"]
-                    cur.execute("SELECT version_id FROM versions WHERE name = ?", (version_name,))
-                    ver_res = cur.fetchone()
-                    if not ver_res:
+                    version_id = version_cache.get(version_name)
+                    if not version_id:
                         continue
-                    version_id = ver_res[0]
                     for detail in version_detail.get("encounter_details", []):
                         method_name = detail["method"]["name"]
-                        cur.execute("SELECT encounter_method_id FROM encounter_methods WHERE name = ?", (method_name,))
-                        meth_res = cur.fetchone()
-                        if not meth_res:
+                        encounter_method_id = encounter_method_cache.get(method_name)
+                        if not encounter_method_id:
                             continue
-                        encounter_method_id = meth_res[0]
                         min_level = detail.get("min_level", 0)
                         max_level = detail.get("max_level", 0)
-                        cur.execute("""
-                            INSERT OR IGNORE INTO pokemon_encounters
-                            (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        """, (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level))
+                        encounter_list.append((pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level))
 
-# Loader for species_egg_groups
+# species_egg_groups
 for folder in os.listdir("./PokeData/api/v2/pokemon-species"):
     folder_path = os.path.join("./PokeData/api/v2/pokemon-species", folder)
     if not os.path.isdir(folder_path):
@@ -221,12 +221,21 @@ for folder in os.listdir("./PokeData/api/v2/pokemon-species"):
     species_id = data["id"]
     for egg_group in data.get("egg_groups", []):
         egg_group_name = egg_group["name"]
-        cur.execute("SELECT egg_group_id FROM egg_groups WHERE name = ?", (egg_group_name,))
-        result = cur.fetchone()
-        if result:
-            egg_group_id = result[0]
-            cur.execute("INSERT OR IGNORE INTO species_egg_groups (species_id, egg_group_id) VALUES (?, ?)", (species_id, egg_group_id))
+        egg_group_id = egg_group_cache.get(egg_group_name)
+        if egg_group_id:
+            egg_group_list.append((species_id, egg_group_id))
 
+
+# Batch inserts
+cur.executemany("INSERT OR IGNORE INTO pokemon_abilities (pokemon_id, ability_id) VALUES (?, ?)", ability_list)
+cur.executemany("INSERT OR IGNORE INTO pokemon_types (pokemon_id, type_id) VALUES (?, ?)", type_list)
+cur.executemany("INSERT OR IGNORE INTO pokemon_stats (pokemon_id, stat_id, value) VALUES (?, ?, ?)", stat_list)
+cur.executemany("INSERT OR IGNORE INTO pokemon_species (pokemon_id, species_id) VALUES (?, ?)", species_list)
+cur.executemany("INSERT OR IGNORE INTO pokemon_moves (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at) VALUES (?, ?, ?, ?, ?)",
+            move_list)
+cur.executemany("INSERT OR IGNORE INTO pokemon_encounters (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level) VALUES (?, ?, ?, ?, ?, ?)",
+    encounter_list)
+cur.executemany("INSERT OR IGNORE INTO species_egg_groups (species_id, egg_group_id) VALUES (?, ?)", egg_group_list)
 
 conn.commit()
 cur.close()

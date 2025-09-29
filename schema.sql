@@ -236,7 +236,7 @@ CREATE TABLE IF NOT EXISTS pokemon_species (
     species_id INTEGER,
     PRIMARY KEY (pokemon_id, species_id),
     FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (species_id) REFERENCES types(species_id)
+    FOREIGN KEY (species_id) REFERENCES species(species_id)
 );
 
 
