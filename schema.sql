@@ -285,3 +285,11 @@ CREATE TABLE IF NOT EXISTS pokemon_stats (
     FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
     FOREIGN KEY (stat_id) REFERENCES stats(stat_id)
 );
+
+CREATE TABLE IF NOT EXISTS move_types (
+    move_id INTEGER,
+    type_id INTEGER,
+    PRIMARY KEY (move_id, type_id),
+    FOREIGN KEY (move_id) REFERENCES moves(move_id),
+    FOREIGN KEY (type_id) REFERENCES type(type_id)
+);

@@ -33,12 +33,15 @@ df_check2 = pd.read_sql_query("""
 df_check3 = pd.read_sql_query("""
     SELECT
         *
-    FROM pokemon_encounters;
+    FROM move_types mt
+    join moves m on mt.move_id = m.move_id
+    join types t on mt.type_id = t.type_id
+    where t.name = 'fire' order by m.name;
 """, conn)
 
 df_check4 = pd.read_sql_query("""
     SELECT
-        p.pokemon_id, m.name, p.name, pm.version_group_id, pm.level_learned_at, vg.name
+        p.pokemon_id, m.name, p.name, pm.version_group_id, pm.level_learned_at, vg.name, m.power
     FROM pokemon_moves pm
     join moves m on m.move_id = pm.move_id
     JOIN pokemon p on pm.pokemon_id = p.pokemon_id

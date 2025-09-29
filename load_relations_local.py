@@ -3,7 +3,6 @@ import json
 import sqlite3
 import pandas as pd
 import gzip
-import requests
 
 
 # Connect
@@ -103,6 +102,7 @@ species_list = []
 move_list = []
 encounter_list = []
 egg_group_list = []
+move_type_list = []
 
 def build_cache(cur, table_name, id_col, name_col="name"):
     cur.execute(f"SELECT {id_col}, {name_col} FROM {table_name}")
@@ -141,8 +141,8 @@ for folder in os.listdir("./PokeData/api/v2/pokemon"):
             ability_list.append((pokemon_id, ability_id))
 
     # pokemon_types
-    for type_ in data.get("types", []):
-        type_name = type_["type"]["name"]
+    for type in data.get("types", []):
+        type_name = type["type"]["name"]
         type_id = type_cache.get(type_name)
         if type_id:
             type_list.append((pokemon_id, type_id))
@@ -225,6 +225,22 @@ for folder in os.listdir("./PokeData/api/v2/pokemon-species"):
         if egg_group_id:
             egg_group_list.append((species_id, egg_group_id))
 
+# move_types
+for folder in os.listdir("./PokeData/api/v2/move"):
+    folder_path = os.path.join("./PokeData/api/v2/move", folder)
+    if not os.path.isdir(folder_path):
+        continue
+    json_path = os.path.join(folder_path, "index.json")
+    if not os.path.exists(json_path):
+        continue
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    move_id = data["id"]
+    type_name = data["type"]["name"]
+    type_id = type_cache.get(type_name)
+    if type_id:
+        move_type_list.append((move_id, type_id))
+
 
 # Batch inserts
 cur.executemany("INSERT OR IGNORE INTO pokemon_abilities (pokemon_id, ability_id) VALUES (?, ?)", ability_list)
@@ -236,6 +252,8 @@ cur.executemany("INSERT OR IGNORE INTO pokemon_moves (pokemon_id, move_id, move_
 cur.executemany("INSERT OR IGNORE INTO pokemon_encounters (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level) VALUES (?, ?, ?, ?, ?, ?)",
     encounter_list)
 cur.executemany("INSERT OR IGNORE INTO species_egg_groups (species_id, egg_group_id) VALUES (?, ?)", egg_group_list)
+cur.executemany("INSERT OR IGNORE INTO move_types (move_id, type_id) VALUES (?, ?)", move_type_list)
+
 
 conn.commit()
 cur.close()
