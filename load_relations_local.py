@@ -5,6 +5,7 @@ import pandas as pd
 import gzip
 
 
+
 # Connect
 conn = sqlite3.connect("silph-scope.db")
 cur = conn.cursor()
@@ -103,12 +104,14 @@ move_list = []
 encounter_list = []
 egg_group_list = []
 move_type_list = []
+color_list = []
+shape_list = []
 
 def build_cache(cur, table_name, id_col, name_col="name"):
     cur.execute(f"SELECT {id_col}, {name_col} FROM {table_name}")
     return {name: _id for _id, name in cur.fetchall()}
 
-# Example usage:
+
 ability_cache = build_cache(cur, "abilities", "ability_id")
 type_cache = build_cache(cur, "types", "type_id")
 move_cache = build_cache(cur, "moves", "move_id")
@@ -120,6 +123,8 @@ species_cache = build_cache(cur, "species", "species_id")
 location_area_cache = build_cache(cur, "location_areas", "location_area_id")
 encounter_method_cache = build_cache(cur, "encounter_methods", "encounter_method_id")
 egg_group_cache = build_cache(cur, "egg_groups", "egg_group_id")
+color_cache = build_cache(cur, "colors", "color_id")
+shape_cache = build_cache(cur, "shapes", "shape_id")
 
 
 for folder in os.listdir("./PokeData/api/v2/pokemon"):
@@ -225,6 +230,16 @@ for folder in os.listdir("./PokeData/api/v2/pokemon-species"):
         if egg_group_id:
             egg_group_list.append((species_id, egg_group_id))
 
+    color_name = data['color']['name']
+    color_id = color_cache.get(color_name)
+    if color_id:
+        color_list.append((species_id, color_id))
+
+    shape_name = data['shape']['name']
+    shape_id = shape_cache.get(shape_name)
+    if shape_id:
+        shape_list.append((species_id, shape_id))
+
 # move_types
 for folder in os.listdir("./PokeData/api/v2/move"):
     folder_path = os.path.join("./PokeData/api/v2/move", folder)
@@ -253,10 +268,14 @@ cur.executemany("INSERT OR IGNORE INTO pokemon_encounters (pokemon_id, version_i
     encounter_list)
 cur.executemany("INSERT OR IGNORE INTO species_egg_groups (species_id, egg_group_id) VALUES (?, ?)", egg_group_list)
 cur.executemany("INSERT OR IGNORE INTO move_types (move_id, type_id) VALUES (?, ?)", move_type_list)
+cur.executemany("INSERT OR IGNORE INTO species_colors (species_id, color_id) VALUES (?, ?)", color_list)
+cur.executemany("INSERT OR IGNORE INTO species_shapes (species_id, shape_id) VALUES (?, ?)", shape_list)
 
 
 conn.commit()
 cur.close()
 conn.close()
+
+
 
 

@@ -293,3 +293,19 @@ CREATE TABLE IF NOT EXISTS move_types (
     FOREIGN KEY (move_id) REFERENCES moves(move_id),
     FOREIGN KEY (type_id) REFERENCES type(type_id)
 );
+
+CREATE TABLE IF NOT EXISTS species_colors (
+    species_id INTEGER,
+    color_id INTEGER,
+    PRIMARY KEY (species_id, color_id),
+    FOREIGN KEY (species_id) REFERENCES species(species_id),
+    FOREIGN KEY (color_id) REFERENCES colors(color_id)
+);
+
+CREATE TABLE IF NOT EXISTS species_shapes (
+    species_id INTEGER,
+    shape_id INTEGER,
+    PRIMARY KEY (species_id, shape_id),
+    FOREIGN KEY (species_id) REFERENCES species(species_id),
+    FOREIGN KEY (shape_id) REFERENCES shapes(shape_id)
+);

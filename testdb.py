@@ -4,21 +4,8 @@ import pandas as pd
 conn = sqlite3.connect("silph-scope.db")
 df_check = pd.read_sql_query("""
     SELECT
-        pe.pokemon_id,
-        p.name AS pokemon_name,
-        v.name AS version_name,
-        la.name AS location_area_name,
-        em.name AS encounter_method_name,
-        pe.min_level,
-        pe.max_level
-    FROM pokemon_encounters pe
-    JOIN pokemon p ON p.pokemon_id = pe.pokemon_id
-    JOIN versions v ON v.version_id = pe.version_id
-    JOIN location_areas la ON la.location_area_id = pe.location_area_id
-    JOIN encounter_methods em ON em.encounter_method_id = pe.encounter_method_id
-    WHERE p.name = "magikarp" AND version_name = "emerald"
-    ORDER BY pe.pokemon_id, v.version_id
-    LIMIT 50
+        *
+    FROM pokemon WHERE name LIKE "%mimikyu%";
 """, conn)
 
 df_check2 = pd.read_sql_query("""
@@ -32,11 +19,12 @@ df_check2 = pd.read_sql_query("""
 
 df_check3 = pd.read_sql_query("""
     SELECT
-        *
+        t.name as type_name,
+        COUNT(*) as move_count
     FROM move_types mt
     join moves m on mt.move_id = m.move_id
     join types t on mt.type_id = t.type_id
-    where t.name = 'fire' order by m.name;
+    group by t.name;
 """, conn)
 
 df_check4 = pd.read_sql_query("""
@@ -50,5 +38,5 @@ df_check4 = pd.read_sql_query("""
 """, conn)
 
 
-print(df_check3)
+print(df_check)
 conn.close()
