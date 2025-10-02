@@ -4,31 +4,7 @@ import sqlite3
 import pandas as pd
 import gzip
 import requests
-
-
-
-conn = sqlite3.connect("silph-scope.db")
-cur = conn.cursor()
-
-url = f"https://www.smogon.com/stats/2025-08/chaos/gen9ou-0.json"
-
-r = requests.get(url)
-
-
-if r.status_code == 200:
-    print(f"Downloaded")
-else:
-    print(f"Failed to download")
-
-def normalize_name(name):
-    # lowercase, replace spaces with hyphens, strip punctuation issues
-    name = name.lower()
-    name = name.replace(" ", "-")
-    name = name.replace("'", "")
-    name = name.replace(".", "")
-    name = name.replace("%", "")
-    name = name.replace(":", "")
-    return name
+from bs4 import BeautifulSoup
 
 variants = {
     "indeedee": "indeedee-male",
@@ -109,22 +85,125 @@ variants = {
     "silvally-steel": "silvally",
     "silvally-water": "silvally",
     "aegislash" : "aegislash-shield",
-    "wishiwashi" : "wishiwashi-school"
+    "wishiwashi" : "wishiwashi-school",
+    "nidoranf" : "nidoran-f",
+    "nidoranm" : "nidoran-m",
+    "pumpkaboo" : "pumpkaboo-average",
+    "wormadam" : "wormadam-plant"
 }
 
-data = r.json()
-print(data["info"])
 
-for name in data['data']:
-    normalized = normalize_name(name)
-    if normalized in variants:
-        normalized = variants[normalized]
-    cur.execute("SELECT name FROM pokemon WHERE name = ?", (normalized,))
-    result = cur.fetchone()
-    if not result:
-        print("could not find ", normalized)
+conn = sqlite3.connect("silph-scope.db")
+cur = conn.cursor()
+
+with open("schema.sql", "r", encoding="utf-8") as f:
+    cur.executescript(f.read())
 
 
+
+# Load in all of the months
+url = "https://www.smogon.com/stats/"
+r = requests.get(url)
+months = []
+if r.status_code == 200:
+    soup = BeautifulSoup(r.text, "html.parser")
+    months = [a['href'].rstrip('/') for a in soup.find_all('a') if a.get('href', '').endswith('/')]
+    months = months[1:]
+    print(months)
+else:
+    print("Failed")
+
+# Loading all formats possible to battle_formats
+for month in months:
+    url = f"https://www.smogon.com/stats/{month}/chaos"
+    files = []
+    r = requests.get(url)
+
+    if r.status_code == 200:
+        soup = BeautifulSoup(r.text, "html.parser")
+        files = [
+            a['href'].removesuffix('.json')
+            for a in soup.find_all('a')
+            if a.get('href', '').endswith('.json') and "cap" not in a['href'].lower()
+        ]
+        #print(files)
+    else:
+        print("Failed")
+    for file in files:
+        cur.execute("INSERT OR IGNORE INTO battle_formats (battle_format_name) VALUES (?)", (file,))
+
+conn.commit()
+
+
+url = f"https://www.smogon.com/stats/2014-11/chaos"
+files = []
+r = requests.get(url)
+
+if r.status_code == 200:
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    files = [
+        a['href'].removesuffix('.json')
+        for a in soup.find_all('a')
+        if a.get('href', '').endswith('.json') and "cap" not in a['href'].lower()
+    ]
+    print(files)
+else:
+    print("Failed")
+
+
+
+def normalize_name(name):
+    # lowercase, replace spaces with hyphens, strip punctuation issues
+    name = name.lower()
+    name = name.replace(" ", "-")
+    name = name.replace("'", "")
+    name = name.replace(".", "")
+    name = name.replace("%", "")
+    name = name.replace(":", "")
+    return name
+
+
+for file in files:
+    url = f"https://www.smogon.com/stats/2014-11/chaos/{file}.json"
+    r = requests.get(url)
+    data = r.json()
+
+    battle_format_name = file
+    cur.execute("SELECT battle_format_id FROM battle_formats WHERE battle_format_name = ?", (battle_format_name,))
+    bf_result = cur.fetchone()
+    if not bf_result:
+        print("could not find battle format", battle_format_name)
+        continue
+    battle_format_id = bf_result[0]
+
+    for name in data['data']:
+
+        normalized = normalize_name(name)
+        if normalized in variants:
+            normalized = variants[normalized]
+        cur.execute("SELECT pokemon_id FROM pokemon WHERE name = ?", (normalized,))
+        result = cur.fetchone()
+        if not result:
+            print("could not find ", normalized)
+        pokemon_id = result[0]
+
+
+        raw_count = data['data'][name].get('Raw count')
+
+        usage_percent = data['data'][name].get('usage')
+        if not usage_percent
+
+
+        cur.execute("""
+            INSERT INTO pokemon_usage (pokemon_id, battle_format_id, raw_count, usage_percent, month)
+            VALUES (?, ?, ?, ?, ?)
+        """, (pokemon_id, battle_format_id, raw_count, usage_percent, month))
+
+
+conn.commit()
+cur.close()
+conn.close()
 
 
 

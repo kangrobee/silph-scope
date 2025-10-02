@@ -5,7 +5,7 @@ conn = sqlite3.connect("silph-scope.db")
 df_check = pd.read_sql_query("""
     SELECT
         *
-    FROM pokemon WHERE name LIKE "%mimikyu%";
+    FROM pokemon_usage pu join battle_formats bf on pu.battle_format_id = bf.battle_format_id;
 """, conn)
 
 df_check2 = pd.read_sql_query("""
@@ -39,4 +39,5 @@ df_check4 = pd.read_sql_query("""
 
 
 print(df_check)
+
 conn.close()

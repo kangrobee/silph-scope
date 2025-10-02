@@ -309,3 +309,21 @@ CREATE TABLE IF NOT EXISTS species_shapes (
     FOREIGN KEY (species_id) REFERENCES species(species_id),
     FOREIGN KEY (shape_id) REFERENCES shapes(shape_id)
 );
+
+
+CREATE TABLE IF NOT EXISTS pokemon_usage (
+    pokemon_usage_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pokemon_id INTEGER,
+    raw_count INTEGER,
+    usage_percent REAL,
+    battle_format_id INTEGER,
+    month DATE,
+    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
+    FOREIGN KEY (battle_format_id) REFERENCES battle_formats(battle_format_id)
+);
+
+
+CREATE TABLE IF NOT EXISTS battle_formats (
+    battle_format_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    battle_format_name TEXT UNIQUE
+);
