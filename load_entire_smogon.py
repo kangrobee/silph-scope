@@ -150,7 +150,7 @@ pokemon_cache = build_cache(cur, "pokemon", "pokemon_id")
 item_cache = build_cache(cur, "items", "item_id", "normalized_name")
 move_cache = build_cache(cur, "moves", "move_id", "normalized_name")
 
-months = ["2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07", "2025-08", "2025-09"]
+months = ["2025-09"]
 
 
 missed_pokemon = []
@@ -178,7 +178,8 @@ for month in months:
             cutoff = str(int(data['info']['cutoff']))
             num_battles = data['info']['number of battles']
 
-            cur.execute("INSERT OR IGNORE INTO battle_formats (name, cutoff, num_battles) VALUES (?, ?, ?)", (metagame, cutoff, num_battles))
+            cur.execute("INSERT OR IGNORE INTO battle_formats (name, cutoff) VALUES (?, ?)", (metagame, cutoff))
+            cur.execute("INSERT OR IGNORE INTO monthly_stats (name, cutoff, month, num_battles) VALUES (?, ?, ?, ?)", (metagame, cutoff, month, num_battles))
 
             metagame = metagame + '-' + cutoff
             for pokemon_name, pokemon_data in data["data"].items():
