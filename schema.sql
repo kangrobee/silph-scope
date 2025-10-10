@@ -319,11 +319,91 @@ CREATE TABLE IF NOT EXISTS pokemon_usage (
     battle_format_id INTEGER,
     month DATE,
     FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (battle_format_id) REFERENCES battle_formats(battle_format_id)
+    FOREIGN KEY (battle_format_id) REFERENCES battle_formats(battle_format_id),
+    UNIQUE (pokemon_id, battle_format_id, month)
 );
 
 
 CREATE TABLE IF NOT EXISTS battle_formats (
     battle_format_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    battle_format_name TEXT UNIQUE
+    name TEXT UNIQUE
 );
+
+
+DROP TABLE IF EXISTS smogon_items;
+CREATE TABLE IF NOT EXISTS smogon_items (
+    smogon_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pokemon_id INTEGER,
+    item_id INTEGER,
+    item_count INTEGER,
+    month DATE,
+    metagame TEXT
+);
+
+DROP TABLE IF EXISTS smogon_moves;
+CREATE TABLE IF NOT EXISTS smogon_moves (
+    smogon_move_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pokemon_id INTEGER,
+    move_id INTEGER,
+    move_count INTEGER,
+    move_perc REAL,
+    month DATE,
+    metagame TEXT
+);
+
+
+DROP TABLE IF EXISTS smogon_teammates;
+CREATE TABLE IF NOT EXISTS smogon_teammates (
+    smogon_teammate_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pokemon_id INTEGER,
+    teammate_id INTEGER,
+    teammate_count INTEGER,
+    month DATE,
+    metagame TEXT
+);
+
+
+DROP TABLE IF EXISTS smogon_checks;
+CREATE TABLE IF NOT EXISTS smogon_checks (
+    smogon_check_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pokemon_id INTEGER,
+    check_id INTEGER,
+    check_count INTEGER,
+    check_perc REAL,
+    check_sd REAL,
+    month DATE,
+    metagame TEXT
+);
+
+
+/*-- INDEX TEXT FOR smogon_checks
+CREATE INDEX IF NOT EXISTS idx_smogon_checks_pokemon_check ON smogon_checks(pokemon_id, check_id);
+CREATE INDEX IF NOT EXISTS idx_smogon_checks_month_metagame ON smogon_checks(month, metagame);*/
+
+
+/*ALTER TABLE items ADD COLUMN normalized_name TEXT;*/
+
+UPDATE items
+SET normalized_name = LOWER(
+    REPLACE(
+        CASE
+            WHEN INSTR(name, '--') > 0 THEN SUBSTR(name, 1, INSTR(name, '--') - 1)
+            ELSE name
+        END,
+    '-', '')
+);
+
+
+
+/*ALTER TABLE moves ADD COLUMN normalized_name TEXT;*/
+
+UPDATE moves
+SET normalized_name = LOWER(
+    REPLACE(
+        CASE
+            WHEN INSTR(name, '--') > 0 THEN SUBSTR(name, 1, INSTR(name, '--') - 1)
+            ELSE name
+        END,
+    '-', '')
+);
+
