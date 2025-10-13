@@ -375,10 +375,10 @@ for month in months:
                         # """,
                         # (pokemon_id, check_id, check_count, check_perc, check_sd, month, metagame))
 
-                cur.executemany("""
-                    INSERT INTO pokemon_usage (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, pokemon_usage_inserts)
+            cur.executemany("""
+                INSERT INTO pokemon_usage (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, pokemon_usage_inserts)
 
 print(missed_items)
 conn.commit()
