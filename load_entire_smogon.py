@@ -150,6 +150,7 @@ pokemon_cache = build_cache(cur, "pokemon", "pokemon_id")
 item_cache = build_cache(cur, "items", "item_id", "normalized_name")
 move_cache = build_cache(cur, "moves", "move_id", "normalized_name")
 
+
 months = ["2025-09"]
 
 
@@ -168,7 +169,7 @@ for month in months:
         if "cap" in json_file.name.lower() or "metronome" in json_file.name.lower():  # skip cap/metronome
             print(f"Skipping file: {json_file.name}")
             continue
-        if not any(tier in json_file.name.lower() for tier in ["ou", "uu", "ru", "nu", "pu", "zu", "vgc", "double", "ubers" ]):
+        if not any(tier in json_file.name.lower() for tier in ["ou", "uu", "ru", "nu", "pu", "zu", "vgc", "double", "ubers", "mono", "1v1"]):
             print(f"Skipping file: {json_file.name}")
             continue
         print(f"{json_file.name}")
@@ -178,11 +179,29 @@ for month in months:
             cutoff = str(int(data['info']['cutoff']))
             num_battles = data['info']['number of battles']
 
-            cur.execute("INSERT OR IGNORE INTO battle_formats (name, cutoff) VALUES (?, ?)", (metagame, cutoff))
-            cur.execute("INSERT OR IGNORE INTO monthly_stats (name, cutoff, month, num_battles) VALUES (?, ?, ?, ?)", (metagame, cutoff, month, num_battles))
+            full_metagame = metagame + '-' + cutoff
+            cur.execute("INSERT OR IGNORE INTO battle_formats (full_metagame, name, cutoff) VALUES (?, ?, ?)", (full_metagame, metagame, cutoff))
+
+            cur.execute("""
+                INSERT OR IGNORE INTO monthly_stats (name, month, num_battles)
+                VALUES (?, ?, ?)
+            """, (metagame, month, num_battles))
+
+            cur.execute("SELECT battle_format_id FROM battle_formats WHERE full_metagame = ?", (full_metagame,))
+            result = cur.fetchone()
+            if not result:
+                print("could not find ", full_metagame)
+            metagame_id = result[0]
 
             metagame = metagame + '-' + cutoff
+
+            pokemon_usage_inserts = []
             for pokemon_name, pokemon_data in data["data"].items():
+                viability = pokemon_data["Viability Ceiling"]
+                players_used = viability[0]
+                gxe_top = viability[1]
+                gxe_99 = viability[2]
+                gxe_95 = viability[3]
                 normalized = normalize_name(pokemon_name)
                 if normalized in variants:
                     normalized = variants[normalized]
@@ -194,10 +213,12 @@ for month in months:
                     usage_percent = raw_count / (num_battles * 2)
 
 
-                cur.execute("""
-                    INSERT INTO pokemon_usage (pokemon_id, raw_count, usage_percent, metagame, month)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (pokemon_id, raw_count, usage_percent, metagame, month))
+                pokemon_usage_inserts.append((pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month))
+
+                # cur.execute("""
+                #     INSERT INTO pokemon_usage (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month)
+                #     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                # """, (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month))
 
 
                 if pokemon_id is None and normalized not in missed_pokemon:
@@ -353,6 +374,11 @@ for month in months:
                         # VALUES (?, ?, ?, ?, ?, ?, ?)
                         # """,
                         # (pokemon_id, check_id, check_count, check_perc, check_sd, month, metagame))
+
+                cur.executemany("""
+                    INSERT INTO pokemon_usage (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, pokemon_usage_inserts)
 
 print(missed_items)
 conn.commit()
