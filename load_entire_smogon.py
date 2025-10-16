@@ -4,13 +4,24 @@ import sqlite3
 import pandas as pd
 import gzip
 from pathlib import Path
+import psycopg2
+from psycopg2.extras import execute_values
+from dotenv import load_dotenv
 
 
-conn = sqlite3.connect("silph-scope.db")
+load_dotenv()
+
+conn = psycopg2.connect(
+    dbname=os.getenv("PG_DBNAME"),
+    user=os.getenv("PG_USER"),
+    password=os.getenv("PG_PASSWORD"),
+    host=os.getenv("PG_HOST"),
+    port=os.getenv("PG_PORT")
+)
 cur = conn.cursor()
 
 with open("schema.sql", "r", encoding="utf-8") as f:
-    cur.executescript(f.read())
+    cur.execute(f.read())
 
 variants = {
     "indeedee": "indeedee-male",
@@ -149,6 +160,7 @@ def build_cache(cur, table_name, id_col, name_col="name"):
 pokemon_cache = build_cache(cur, "pokemon", "pokemon_id")
 item_cache = build_cache(cur, "items", "item_id", "normalized_name")
 move_cache = build_cache(cur, "moves", "move_id", "normalized_name")
+ability_cache = build_cache(cur, "abilities", "ability_id", "normalized_name")
 
 
 months = ["2025-09"]
@@ -157,21 +169,25 @@ months = ["2025-09"]
 missed_pokemon = []
 missed_moves = []
 missed_items = []
+missed_abilities = []
 
 
-cur.execute("BEGIN TRANSACTION")
 
 for month in months:
+
     print("starting ", month)
     data_dir = Path(f"./SmogonData/{month}/chaos/")
+    month = month + "-01"
+
     for json_file in data_dir.glob("*.json"):
 
-        if "cap" in json_file.name.lower() or "metronome" in json_file.name.lower():  # skip cap/metronome
+        if "cap" in json_file.name.lower() or "metronome" in json_file.name.lower():
             print(f"Skipping file: {json_file.name}")
             continue
         if not any(tier in json_file.name.lower() for tier in ["ou", "uu", "ru", "nu", "pu", "zu", "vgc", "double", "ubers", "mono", "1v1"]):
             print(f"Skipping file: {json_file.name}")
             continue
+
         print(f"{json_file.name}")
         with open(json_file, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -180,28 +196,42 @@ for month in months:
             num_battles = data['info']['number of battles']
 
             full_metagame = metagame + '-' + cutoff
-            cur.execute("INSERT OR IGNORE INTO battle_formats (full_metagame, name, cutoff) VALUES (?, ?, ?)", (full_metagame, metagame, cutoff))
 
+            # battle_formats insert
             cur.execute("""
-                INSERT OR IGNORE INTO monthly_stats (name, month, num_battles)
-                VALUES (?, ?, ?)
+                INSERT INTO battle_formats (full_metagame, name, cutoff)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (name, cutoff) DO NOTHING
+            """, (full_metagame, metagame, cutoff))
+
+            # monthly_stats insert
+            cur.execute("""
+                INSERT INTO monthly_stats (name, month, num_battles)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (name, month) DO NOTHING
             """, (metagame, month, num_battles))
 
-            cur.execute("SELECT battle_format_id FROM battle_formats WHERE full_metagame = ?", (full_metagame,))
+            # Retrieve metagame_id
+            cur.execute("SELECT battle_format_id FROM battle_formats WHERE full_metagame = %s", (full_metagame,))
             result = cur.fetchone()
             if not result:
                 print("could not find ", full_metagame)
+                continue
             metagame_id = result[0]
 
             metagame = metagame + '-' + cutoff
 
+            # Initialize all insert lists
             pokemon_usage_inserts = []
+            smogon_abilities_inserts = []
+            smogon_items_inserts = []
+            smogon_moves_inserts = []
+            smogon_teammates_inserts = []
+            smogon_checks_inserts = []
+
             for pokemon_name, pokemon_data in data["data"].items():
                 viability = pokemon_data["Viability Ceiling"]
-                players_used = viability[0]
-                gxe_top = viability[1]
-                gxe_99 = viability[2]
-                gxe_95 = viability[3]
+                players_used, gxe_top, gxe_99, gxe_95 = viability
                 normalized = normalize_name(pokemon_name)
                 if normalized in variants:
                     normalized = variants[normalized]
@@ -209,178 +239,129 @@ for month in months:
                 pokemon_id = pokemon_cache.get(normalized)
                 raw_count = pokemon_data.get('Raw count')
                 usage_percent = pokemon_data.get('usage')
-                if usage_percent is None:
-                    usage_percent = raw_count / (num_battles * 2)
+                if usage_percent is not None:
+                    usage_percent *= 100
+                else:
+                    usage_percent = (raw_count / (num_battles * 2)) * 100
 
-
-                pokemon_usage_inserts.append((pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month))
-
-                # cur.execute("""
-                #     INSERT INTO pokemon_usage (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month)
-                #     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                # """, (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month))
-
+                pokemon_usage_inserts.append(
+                    (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month)
+                )
 
                 if pokemon_id is None and normalized not in missed_pokemon:
                     missed_pokemon.append(normalized)
 
-                # cur.execute("SELECT pokemon_id FROM pokemon WHERE name = ?", (normalized,))
-                # result = cur.fetchone()
-                # if not result:
-                #     print("could not find ", normalized)
-                # pokemon_id = result[0]
+                # ABILITIES
+                if "Abilities" in pokemon_data:
+                    total_count = sum(pokemon_data["Abilities"].values())
+                    for ability_name, ability_count in pokemon_data["Abilities"].items():
+                        if not ability_name or ability_name.lower() in ("noability") or ability_count == 0:
+                            ability_id = 0
+                        else:
+                            ability_id = ability_cache.get(ability_name)
+                        if ability_id is None and ability_name not in missed_abilities:
+                            missed_abilities.append(ability_name)
+                        ability_perc = (ability_count / total_count) * 100
+                        smogon_abilities_inserts.append((pokemon_id, ability_id, ability_count, ability_perc, month, metagame))
 
+                # ITEMS
                 if "Items" in pokemon_data:
-                    inserts = []
                     for item_name, item_count in pokemon_data["Items"].items():
                         if item_name in item_variants:
                             item_name = item_variants[item_name]
-
                         if not item_name or item_name.lower() in ("nothing", "empty") or item_count == 0:
                             continue
-                        # cur.execute("SELECT item_id FROM items WHERE normalized_name = ?", (item_name,))
-                        # result = cur.fetchone()
-
-                        # if result:
-                        #     item_id = result[0]
-                        # else:
-                        #     item_id = 0
-                        #     #print("Item not found in items table:", item_name)
-
                         item_id = item_cache.get(item_name)
-
                         if item_id is None and item_name not in missed_items:
                             missed_items.append(item_name)
+                        smogon_items_inserts.append((pokemon_id, item_id, item_count, month, metagame))
 
-                        inserts.append((pokemon_id, item_id, item_count, month, metagame))
-
-                    cur.executemany("""
-                            INSERT INTO smogon_items (pokemon_id, item_id, item_count, month, metagame)
-                            VALUES (?, ?, ?, ?, ?)
-                        """, inserts)
-
-                        # cur.execute(
-                        # """
-                        # INSERT OR IGNORE INTO smogon_items (pokemon_id, item_id, item_count, month, metagame)
-                        # VALUES (?, ?, ?, ?, ?)
-                        # """,
-                        # (pokemon_id, item_id, item_count, month, metagame))
-
-
+                # MOVES
                 if "Moves" in pokemon_data:
-                    inserts = []
+                    total_count = sum(pokemon_data["Moves"].values())
                     for move_name, move_count in pokemon_data["Moves"].items():
                         if not move_name or move_name.lower() == "" or move_count == 0:
                             continue
                         if move_name == 'visegrip':
                             move_name = 'vicegrip'
-                        # cur.execute("SELECT move_id FROM moves WHERE normalized_name = ?", (move_name,))
-                        # result = cur.fetchone()
-
-                        # if result:
-                        #     move_id = result[0]
-                        # else:
-                        #     move_id = 0
-                        #     print("Item not found in items table:", move_name)
-                        total_count = sum(pokemon_data["Moves"].values())
                         move_id = move_cache.get(move_name)
-
                         if move_id is None and move_name not in missed_moves:
                             missed_moves.append(move_name)
+                        move_perc = (move_count / (total_count / 4)) * 100
+                        smogon_moves_inserts.append((pokemon_id, move_id, move_count, move_perc, month, metagame))
 
-                        move_perc = move_count / (total_count / 4)
-                        inserts.append((pokemon_id, move_id, move_count, move_perc, month, metagame))
-
-                    cur.executemany("""
-                                INSERT INTO smogon_moves (pokemon_id, move_id, move_count, move_perc, month, metagame)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            """, inserts)
-
-                        # cur.execute(
-                        # """
-                        # INSERT INTO smogon_moves (pokemon_id, move_id, move_count, move_perc, month, metagame)
-                        # VALUES (?, ?, ?, ?, ?, ?)
-                        # """,
-                        # (pokemon_id, move_id, move_count, move_perc, month, metagame))
-
+                # TEAMMATES
                 if "Teammates" in pokemon_data:
-                    inserts = []
                     for teammate_name, teammate_count in pokemon_data["Teammates"].items():
                         if not teammate_name or teammate_name.lower() == "empty" or teammate_count == 0:
                             continue
                         normalized_teammate = normalize_name(teammate_name)
                         if normalized_teammate in variants:
                             normalized_teammate = variants[normalized_teammate]
-                        # cur.execute("SELECT pokemon_id FROM pokemon WHERE name = ?", (normalized_teammate,))
-                        # result = cur.fetchone()
-                        # if not result:
-                        #     print("could not find ", normalized_teammate)
-
-                        # if result:
-                        #     teammate_id = result[0]
-                        # else:
-                        #     #print("Item not found in items table:", normalized_teammate)
-                        #     continue
-
                         teammate_id = pokemon_cache.get(normalized_teammate)
-                        inserts.append((pokemon_id, teammate_id, teammate_count, month, metagame))
+                        smogon_teammates_inserts.append((pokemon_id, teammate_id, teammate_count, month, metagame))
 
-                    cur.executemany("""
-                                INSERT INTO smogon_teammates (pokemon_id, teammate_id, teammate_count, month, metagame)
-                                VALUES (?, ?, ?, ?, ?)
-                            """, inserts)
-                        # cur.execute(
-                        # """
-                        # INSERT INTO smogon_teammates (pokemon_id, teammate_id, teammate_count, month, metagame)
-                        # VALUES (?, ?, ?, ?, ?)
-                        # """,
-                        # (pokemon_id, teammate_id, teammate_count, month, metagame))
-
-
+                # CHECKS
                 if "Checks and Counters" in pokemon_data:
-                    inserts = []
                     for check_name, check_arr in pokemon_data["Checks and Counters"].items():
                         if not check_name or check_name.lower() == "empty":
                             continue
                         normalized_check = normalize_name(check_name)
                         if normalized_check in variants:
                             normalized_check = variants[normalized_check]
-                        # cur.execute("SELECT pokemon_id FROM pokemon WHERE name = ?", (normalized_teammate,))
-                        # result = cur.fetchone()
-                        # if not result:
-                        #     print("could not find ", normalized_teammate)
-
-                        # if result:
-                        #     teammate_id = result[0]
-                        # else:
-                        #     #print("Item not found in items table:", normalized_teammate)
-                        #     continue
-
                         check_id = pokemon_cache.get(normalized_check)
-                        check_count = check_arr[0]
-                        check_perc = check_arr[1]
-                        check_sd = check_arr[2]
+                        check_count, check_perc, check_sd = check_arr
+                        check_perc *= 100
+                        smogon_checks_inserts.append((pokemon_id, check_id, check_count, check_perc, check_sd, month, metagame))
 
-                        inserts.append((pokemon_id, check_id, check_count, check_perc, check_sd, month, metagame))
+            # Single batch inserts per table per month
+            with conn:
+                if pokemon_usage_inserts:
+                    execute_values(cur, """
+                        INSERT INTO pokemon_usage
+                        (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month)
+                        VALUES %s
+                    """, pokemon_usage_inserts)
 
-                    cur.executemany("""
-                                INSERT INTO smogon_checks (pokemon_id, check_id, check_count, check_perc, check_sd, month, metagame)
-                                VALUES (?, ?, ?, ?, ?, ?, ?)
-                            """, inserts)
+                if smogon_abilities_inserts:
+                    execute_values(cur, """
+                        INSERT INTO smogon_abilities
+                        (pokemon_id, ability_id, ability_count, ability_perc, month, metagame)
+                        VALUES %s
+                    """, smogon_abilities_inserts)
 
-                        # cur.execute(
-                        # """
-                        # INSERT INTO smogon_checks (pokemon_id, check_id, check_count, check_perc, check_sd, month, metagame)
-                        # VALUES (?, ?, ?, ?, ?, ?, ?)
-                        # """,
-                        # (pokemon_id, check_id, check_count, check_perc, check_sd, month, metagame))
+                if smogon_items_inserts:
+                    execute_values(cur, """
+                        INSERT INTO smogon_items
+                        (pokemon_id, item_id, item_count, month, metagame)
+                        VALUES %s
+                    """, smogon_items_inserts)
 
-            cur.executemany("""
-                INSERT INTO pokemon_usage (pokemon_id, raw_count, usage_percent, players_used, gxe_top, gxe_99, gxe_95, metagame_id, month)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, pokemon_usage_inserts)
+                if smogon_moves_inserts:
+                    execute_values(cur, """
+                        INSERT INTO smogon_moves
+                        (pokemon_id, move_id, move_count, move_perc, month, metagame)
+                        VALUES %s
+                    """, smogon_moves_inserts)
 
-print(missed_items)
+                if smogon_teammates_inserts:
+                    execute_values(cur, """
+                        INSERT INTO smogon_teammates
+                        (pokemon_id, teammate_id, teammate_count, month, metagame)
+                        VALUES %s
+                    """, smogon_teammates_inserts)
+
+                if smogon_checks_inserts:
+                    execute_values(cur, """
+                        INSERT INTO smogon_checks
+                        (pokemon_id, check_id, check_count, check_perc, check_sd, month, metagame)
+                        VALUES %s
+                    """, smogon_checks_inserts)
+
+print("missed abilities", missed_abilities)
+print("missed moves", missed_moves)
+print("missed items", missed_items)
+
 conn.commit()
 conn.close()
 

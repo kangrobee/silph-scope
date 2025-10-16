@@ -1,6 +1,20 @@
+/*DROP INDEX IF EXISTS idx_pokemon_usage_pokemon_id;
+DROP INDEX IF EXISTS idx_pokemon_usage_metagame_month;
+DROP INDEX IF EXISTS idx_battle_formats_full_metagame;
+DROP INDEX IF EXISTS idx_smogon_items_pokemon_item;
+DROP INDEX IF EXISTS idx_smogon_items_month_metagame;
+DROP INDEX IF EXISTS idx_smogon_moves_pokemon_move;
+DROP INDEX IF EXISTS idx_smogon_moves_month_metagame;
+DROP INDEX IF EXISTS idx_smogon_teammates_pokemon_teammate;
+DROP INDEX IF EXISTS idx_smogon_teammates_month_metagame;
+DROP INDEX IF EXISTS idx_smogon_checks_pokemon_check;
+DROP INDEX IF EXISTS idx_smogon_checks_month_metagame;*/
+
+
+
 
 CREATE TABLE IF NOT EXISTS pokemon (
-    pokemon_id INTEGER PRIMARY KEY,
+    pokemon_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     height INTEGER,
     weight INTEGER,
@@ -8,19 +22,18 @@ CREATE TABLE IF NOT EXISTS pokemon (
 );
 
 CREATE TABLE IF NOT EXISTS species (
-    species_id INTEGER PRIMARY KEY,
+    species_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS abilities (
-    ability_id INTEGER PRIMARY KEY,
+    ability_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     generation TEXT
 );
 
 CREATE TABLE IF NOT EXISTS moves (
-    move_id INTEGER PRIMARY KEY,
+    move_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     generation TEXT,
     power INTEGER,
@@ -30,309 +43,293 @@ CREATE TABLE IF NOT EXISTS moves (
 );
 
 CREATE TABLE IF NOT EXISTS berries (
-    berry_id INTEGER PRIMARY KEY,
+    berry_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS egg_groups (
-    egg_group_id INTEGER PRIMARY KEY,
+    egg_group_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS encounter_conds (
-    encounter_id INTEGER PRIMARY KEY,
+    encounter_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS encounter_values (
-    encounter_value_id INTEGER PRIMARY KEY,
+    encounter_value_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS encounter_methods (
-    encounter_method_id INTEGER PRIMARY KEY,
+    encounter_method_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS evolution_chains (
-    evolution_chain_id INTEGER PRIMARY KEY,
+    evolution_chain_id SERIAL PRIMARY KEY,
     evolution_chain_id2 INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS evolution_triggers (
-    evolution_trigger_id INTEGER PRIMARY KEY,
+    evolution_trigger_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS genders (
-    gender_id INTEGER PRIMARY KEY,
+    gender_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS generations (
-    generation_id INTEGER PRIMARY KEY,
+    generation_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
-
 
 CREATE TABLE IF NOT EXISTS growth_rates (
-    growth_rate_id INTEGER PRIMARY KEY,
+    growth_rate_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS items (
-    item_id INTEGER PRIMARY KEY,
+    item_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     cost INTEGER,
-    fling_power INTEGER
+    fling_power INTEGER,
+    normalized_name TEXT
 );
 
 CREATE TABLE IF NOT EXISTS item_attributes (
-    item_attribute_id INTEGER PRIMARY KEY,
+    item_attribute_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS item_categories (
-    item_category_id INTEGER PRIMARY KEY,
+    item_category_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS item_fling_effects (
-    item_fling_effect_id INTEGER PRIMARY KEY,
+    item_fling_effect_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS item_pockets (
-    item_pocket_id INTEGER PRIMARY KEY,
+    item_pocket_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS locations (
-    location_id INTEGER PRIMARY KEY,
+    location_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS location_areas (
-    location_area_id INTEGER PRIMARY KEY,
+    location_area_id SERIAL PRIMARY KEY,
     location_name TEXT NOT NULL,
     name TEXT
 );
 
-
 CREATE TABLE IF NOT EXISTS machines (
-    machine_id INTEGER PRIMARY KEY,
+    machine_id SERIAL PRIMARY KEY,
     item_name TEXT NOT NULL,
     move_name TEXT
 );
 
 CREATE TABLE IF NOT EXISTS move_ailments (
-    move_ailment_id INTEGER PRIMARY KEY,
+    move_ailment_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS move_battle_styles (
-    move_battle_style_id INTEGER PRIMARY KEY,
+    move_battle_style_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS move_categories(
-    move_category_id INTEGER PRIMARY KEY,
+    move_category_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS move_damage_classes (
-    move_damage_class_id INTEGER PRIMARY KEY,
+    move_damage_class_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS move_learn_methods (
-    move_learn_method_id INTEGER PRIMARY KEY,
+    move_learn_method_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS move_targets (
-    move_target_id INTEGER PRIMARY KEY,
+    move_target_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS natures (
-    nature_id INTEGER PRIMARY KEY,
+    nature_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     decreased_stat TEXT,
     increased_stat TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pokedexes (
-    pokedex_id INTEGER PRIMARY KEY,
+    pokedex_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS colors (
-    color_id INTEGER PRIMARY KEY,
+    color_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS shapes (
-    shape_id INTEGER PRIMARY KEY,
+    shape_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS habitats (
-    habitat_id INTEGER PRIMARY KEY,
+    habitat_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS regions (
-    region_id INTEGER PRIMARY KEY,
+    region_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS stats (
-    stat_id INTEGER PRIMARY KEY,
+    stat_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS types (
-    type_id INTEGER PRIMARY KEY,
+-- renamed type table to avoid reserved keyword conflict
+CREATE TABLE IF NOT EXISTS pokemon_types_def (
+    type_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS versions (
-    version_id INTEGER PRIMARY KEY,
+    version_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS version_groups (
-    version_group_id INTEGER PRIMARY KEY,
+    version_group_id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     order_num INTEGER
 );
 
+-- =========================
+-- Linking Tables
+-- =========================
 
 CREATE TABLE IF NOT EXISTS pokemon_abilities (
-    pokemon_id INTEGER,
-    ability_id INTEGER,
-    PRIMARY KEY (pokemon_id, ability_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (ability_id) REFERENCES abilities(ability_id)
+    pokemon_id INTEGER REFERENCES pokemon(pokemon_id),
+    ability_id INTEGER REFERENCES abilities(ability_id),
+    PRIMARY KEY (pokemon_id, ability_id)
 );
-
 
 CREATE TABLE IF NOT EXISTS pokemon_types (
-    pokemon_id INTEGER,
-    type_id INTEGER,
-    PRIMARY KEY (pokemon_id, type_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (type_id) REFERENCES types(type_id)
+    pokemon_id INTEGER REFERENCES pokemon(pokemon_id),
+    type_id INTEGER REFERENCES pokemon_types_def(type_id),
+    PRIMARY KEY (pokemon_id, type_id)
 );
-
 
 CREATE TABLE IF NOT EXISTS pokemon_species (
-    pokemon_id INTEGER,
-    species_id INTEGER,
-    PRIMARY KEY (pokemon_id, species_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (species_id) REFERENCES species(species_id)
+    pokemon_id INTEGER REFERENCES pokemon(pokemon_id),
+    species_id INTEGER REFERENCES species(species_id),
+    PRIMARY KEY (pokemon_id, species_id)
 );
-
 
 CREATE TABLE IF NOT EXISTS species_egg_groups (
-    species_id INTEGER,
-    egg_group_id INTEGER,
-    PRIMARY KEY (species_id, egg_group_id),
-    FOREIGN KEY (species_id) REFERENCES species(species_id),
-    FOREIGN KEY (egg_group_id) REFERENCES egg_groups(egg_group_id)
+    species_id INTEGER REFERENCES species(species_id),
+    egg_group_id INTEGER REFERENCES egg_groups(egg_group_id),
+    PRIMARY KEY (species_id, egg_group_id)
 );
-
 
 CREATE TABLE IF NOT EXISTS pokemon_moves (
-    pokemon_id INTEGER,
-    move_id INTEGER,
-    move_learn_method_id INTEGER,
-    version_group_id INTEGER,
+    pokemon_id INTEGER REFERENCES pokemon(pokemon_id),
+    move_id INTEGER REFERENCES moves(move_id),
+    move_learn_method_id INTEGER REFERENCES move_learn_methods(move_learn_method_id),
+    version_group_id INTEGER REFERENCES version_groups(version_group_id),
     level_learned_at INTEGER,
-    PRIMARY KEY (pokemon_id, move_id, move_learn_method_id, version_group_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (move_id) REFERENCES moves(move_id),
-    FOREIGN KEY (move_learn_method_id) REFERENCES move_learn_methods(move_learn_method_id),
-    FOREIGN KEY (version_group_id) REFERENCES version_groups(version_group_id)
+    PRIMARY KEY (pokemon_id, move_id, move_learn_method_id, version_group_id)
 );
 
-
 CREATE TABLE IF NOT EXISTS pokemon_encounters (
-    pokemon_id INTEGER,
-    version_id INTEGER,
-    location_area_id INTEGER,
-    encounter_method_id INTEGER,
+    pokemon_id INTEGER REFERENCES pokemon(pokemon_id),
+    version_id INTEGER REFERENCES versions(version_id),
+    location_area_id INTEGER REFERENCES location_areas(location_area_id),
+    encounter_method_id INTEGER REFERENCES encounter_methods(encounter_method_id),
     min_level INTEGER,
     max_level INTEGER,
-    PRIMARY KEY (pokemon_id, version_id, location_area_id, encounter_method_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (version_id) REFERENCES versions(version_id),
-    FOREIGN KEY (location_area_id) REFERENCES location_areas(location_area_id),
-    FOREIGN KEY (encounter_method_id) REFERENCES encounter_methods(encounter_method_id)
+    PRIMARY KEY (pokemon_id, version_id, location_area_id, encounter_method_id)
 );
 
 CREATE TABLE IF NOT EXISTS pokemon_stats (
-    pokemon_id INTEGER,
-    stat_id INTEGER,
+    pokemon_id INTEGER REFERENCES pokemon(pokemon_id),
+    stat_id INTEGER REFERENCES stats(stat_id),
     value INTEGER,
-    PRIMARY KEY (pokemon_id, stat_id),
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (stat_id) REFERENCES stats(stat_id)
+    PRIMARY KEY (pokemon_id, stat_id)
 );
 
 CREATE TABLE IF NOT EXISTS move_types (
-    move_id INTEGER,
-    type_id INTEGER,
-    PRIMARY KEY (move_id, type_id),
-    FOREIGN KEY (move_id) REFERENCES moves(move_id),
-    FOREIGN KEY (type_id) REFERENCES type(type_id)
+    move_id INTEGER REFERENCES moves(move_id),
+    type_id INTEGER REFERENCES pokemon_types_def(type_id),
+    PRIMARY KEY (move_id, type_id)
 );
 
 CREATE TABLE IF NOT EXISTS species_colors (
-    species_id INTEGER,
-    color_id INTEGER,
-    PRIMARY KEY (species_id, color_id),
-    FOREIGN KEY (species_id) REFERENCES species(species_id),
-    FOREIGN KEY (color_id) REFERENCES colors(color_id)
+    species_id INTEGER REFERENCES species(species_id),
+    color_id INTEGER REFERENCES colors(color_id),
+    PRIMARY KEY (species_id, color_id)
 );
 
 CREATE TABLE IF NOT EXISTS species_shapes (
-    species_id INTEGER,
-    shape_id INTEGER,
-    PRIMARY KEY (species_id, shape_id),
-    FOREIGN KEY (species_id) REFERENCES species(species_id),
-    FOREIGN KEY (shape_id) REFERENCES shapes(shape_id)
+    species_id INTEGER REFERENCES species(species_id),
+    shape_id INTEGER REFERENCES shapes(shape_id),
+    PRIMARY KEY (species_id, shape_id)
 );
 
-
+-- =========================
+-- Smogon Tables
+-- =========================
+DROP TABLE IF EXISTS pokemon_usage;
 CREATE TABLE IF NOT EXISTS pokemon_usage (
-    pokemon_usage_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    pokemon_id INTEGER,
+    pokemon_usage_id SERIAL PRIMARY KEY,
+    pokemon_id INTEGER REFERENCES pokemon(pokemon_id),
     raw_count INTEGER,
-    usage_percent REAL,
-    battle_format_id INTEGER,
-    month DATE,
-    FOREIGN KEY (pokemon_id) REFERENCES pokemon(pokemon_id),
-    FOREIGN KEY (battle_format_id) REFERENCES battle_formats(battle_format_id),
-    UNIQUE (pokemon_id, battle_format_id, month)
+    usage_percent DOUBLE PRECISION,
+    players_used INTEGER,
+    gxe_top INTEGER,
+    gxe_99 INTEGER,
+    gxe_95 INTEGER,
+    metagame_id INTEGER,
+    month DATE
 );
 
-
+DROP TABLE IF EXISTS battle_formats;
 CREATE TABLE IF NOT EXISTS battle_formats (
-    battle_format_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE
+    battle_format_id SERIAL PRIMARY KEY,
+    full_metagame TEXT,
+    name TEXT,
+    cutoff INTEGER,
+    UNIQUE (name, cutoff)
 );
 
+DROP TABLE IF EXISTS monthly_stats;
+CREATE TABLE IF NOT EXISTS monthly_stats (
+    name TEXT,
+    month DATE,
+    num_battles INTEGER,
+    UNIQUE (name, month)
+);
 
 DROP TABLE IF EXISTS smogon_items;
 CREATE TABLE IF NOT EXISTS smogon_items (
-    smogon_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    smogon_item_id SERIAL PRIMARY KEY,
     pokemon_id INTEGER,
     item_id INTEGER,
     item_count INTEGER,
@@ -342,19 +339,18 @@ CREATE TABLE IF NOT EXISTS smogon_items (
 
 DROP TABLE IF EXISTS smogon_moves;
 CREATE TABLE IF NOT EXISTS smogon_moves (
-    smogon_move_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    smogon_move_id SERIAL PRIMARY KEY,
     pokemon_id INTEGER,
     move_id INTEGER,
     move_count INTEGER,
-    move_perc REAL,
+    move_perc DOUBLE PRECISION,
     month DATE,
     metagame TEXT
 );
 
-
 DROP TABLE IF EXISTS smogon_teammates;
 CREATE TABLE IF NOT EXISTS smogon_teammates (
-    smogon_teammate_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    smogon_teammate_id SERIAL PRIMARY KEY,
     pokemon_id INTEGER,
     teammate_id INTEGER,
     teammate_count INTEGER,
@@ -362,18 +358,29 @@ CREATE TABLE IF NOT EXISTS smogon_teammates (
     metagame TEXT
 );
 
-
 DROP TABLE IF EXISTS smogon_checks;
 CREATE TABLE IF NOT EXISTS smogon_checks (
-    smogon_check_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    smogon_check_id SERIAL PRIMARY KEY,
     pokemon_id INTEGER,
     check_id INTEGER,
     check_count INTEGER,
-    check_perc REAL,
-    check_sd REAL,
+    check_perc DOUBLE PRECISION,
+    check_sd DOUBLE PRECISION,
     month DATE,
     metagame TEXT
 );
+
+DROP TABLE IF EXISTS smogon_abilities;
+CREATE TABLE IF NOT EXISTS smogon_abilities (
+    smogon_ability_id SERIAL PRIMARY KEY,
+    pokemon_id INTEGER,
+    ability_id INTEGER,
+    ability_count INTEGER,
+    ability_perc DOUBLE PRECISION,
+    month DATE,
+    metagame TEXT
+);
+
 
 
 /*-- INDEX TEXT FOR smogon_checks
@@ -381,29 +388,59 @@ CREATE INDEX IF NOT EXISTS idx_smogon_checks_pokemon_check ON smogon_checks(poke
 CREATE INDEX IF NOT EXISTS idx_smogon_checks_month_metagame ON smogon_checks(month, metagame);*/
 
 
-/*ALTER TABLE items ADD COLUMN normalized_name TEXT;*/
+-- ITEMS
+ALTER TABLE items ADD COLUMN IF NOT EXISTS normalized_name TEXT;
 
 UPDATE items
 SET normalized_name = LOWER(
     REPLACE(
         CASE
-            WHEN INSTR(name, '--') > 0 THEN SUBSTR(name, 1, INSTR(name, '--') - 1)
+            WHEN POSITION('--' IN name) > 0 THEN SUBSTRING(name FROM 1 FOR POSITION('--' IN name) - 1)
             ELSE name
         END,
-    '-', '')
+        '-', ''
+    )
 );
 
-
-
-/*ALTER TABLE moves ADD COLUMN normalized_name TEXT;*/
+-- MOVES
+ALTER TABLE moves ADD COLUMN IF NOT EXISTS normalized_name TEXT;
 
 UPDATE moves
 SET normalized_name = LOWER(
     REPLACE(
         CASE
-            WHEN INSTR(name, '--') > 0 THEN SUBSTR(name, 1, INSTR(name, '--') - 1)
+            WHEN POSITION('--' IN name) > 0 THEN SUBSTRING(name FROM 1 FOR POSITION('--' IN name) - 1)
             ELSE name
         END,
-    '-', '')
+        '-', ''
+    )
 );
 
+-- ABILITIES
+ALTER TABLE abilities ADD COLUMN IF NOT EXISTS normalized_name TEXT;
+
+UPDATE abilities
+SET normalized_name = LOWER(
+    REPLACE(
+        CASE
+            WHEN POSITION('--' IN name) > 0 THEN SUBSTRING(name FROM 1 FOR POSITION('--' IN name) - 1)
+            ELSE name
+        END,
+        '-', ''
+    )
+);
+
+
+
+/*
+CREATE INDEX IF NOT EXISTS idx_pokemon_usage_pokemon_id ON pokemon_usage(pokemon_id);
+CREATE INDEX IF NOT EXISTS idx_pokemon_usage_metagame_month ON pokemon_usage(metagame_id, month);
+CREATE INDEX IF NOT EXISTS idx_battle_formats_full_metagame ON battle_formats(full_metagame);
+CREATE INDEX IF NOT EXISTS idx_smogon_items_pokemon_item ON smogon_items(pokemon_id, item_id);
+CREATE INDEX IF NOT EXISTS idx_smogon_items_month_metagame ON smogon_items(month, metagame);
+CREATE INDEX IF NOT EXISTS idx_smogon_moves_pokemon_move ON smogon_moves(pokemon_id, move_id);
+CREATE INDEX IF NOT EXISTS idx_smogon_moves_month_metagame ON smogon_moves(month, metagame);
+CREATE INDEX IF NOT EXISTS idx_smogon_teammates_pokemon_teammate ON smogon_teammates(pokemon_id, teammate_id);
+CREATE INDEX IF NOT EXISTS idx_smogon_teammates_month_metagame ON smogon_teammates(month, metagame);
+CREATE INDEX IF NOT EXISTS idx_smogon_checks_pokemon_check ON smogon_checks(pokemon_id, check_id);
+CREATE INDEX IF NOT EXISTS idx_smogon_checks_month_metagame ON smogon_checks(month, metagame);*/

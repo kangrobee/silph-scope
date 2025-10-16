@@ -1,18 +1,27 @@
 import os
 import json
-import sqlite3
+import psycopg2
+from psycopg2.extras import execute_values
+from dotenv import load_dotenv
 import pandas as pd
 import gzip
 
+# Load environment variables
+load_dotenv()
 
-
-# Connect
-conn = sqlite3.connect("silph-scope.db")
+# Connect to Postgres using env vars
+conn = psycopg2.connect(
+    dbname=os.getenv("PG_DBNAME"),
+    user=os.getenv("PG_USER"),
+    password=os.getenv("PG_PASSWORD"),
+    host=os.getenv("PG_HOST"),
+    port=os.getenv("PG_PORT")
+)
 cur = conn.cursor()
 
-# SCHEMA
 with open("schema.sql", "r", encoding="utf-8") as f:
-    cur.executescript(f.read())
+    cur.execute(f.read())
+
 
 
 # Extractors
@@ -64,7 +73,7 @@ TABLE_CONFIG = [
     {"name": "shapes", "path": "./PokeData/api/v2/pokemon-shape", "columns": ["shape_id","name"], "extract": get_Id_Name},
     {"name": "regions", "path": "./PokeData/api/v2/region", "columns": ["region_id","name"], "extract": get_Id_Name},
     {"name": "stats", "path": "./PokeData/api/v2/stat", "columns": ["stat_id","name"], "extract": get_Id_Name},
-    {"name": "types", "path": "./PokeData/api/v2/type", "columns": ["type_id","name"], "extract": get_Id_Name},
+    {"name": "pokemon_types_def", "path": "./PokeData/api/v2/type", "columns": ["type_id","name"], "extract": get_Id_Name},
     {"name": "versions", "path": "./PokeData/api/v2/version", "columns": ["version_id","name"], "extract": get_Id_Name},
     {"name": "version_groups", "path": "./PokeData/api/v2/version-group", "columns": ["version_group_id","name", "order_num"], "extract": get_Version_Group}
 
@@ -72,6 +81,8 @@ TABLE_CONFIG = [
 
 # Loader for single relations
 def load_table(cur, cfg):
+    rows = []
+
     for folder in os.listdir(cfg["path"]):
         folder_path = os.path.join(cfg["path"], folder)
 
@@ -79,7 +90,6 @@ def load_table(cur, cfg):
             continue
 
         json_path = os.path.join(folder_path, "index.json")
-
         if not os.path.exists(json_path):
             continue
 
@@ -87,9 +97,17 @@ def load_table(cur, cfg):
             data = json.load(f)
 
         values = cfg["extract"](data)
-        placeholders = "?" if isinstance(values, int) else ", ".join(["?"] * len(values))
+
+        # make sure values is always a tuple/list of tuples
+        if isinstance(values, tuple):
+            rows.append(values)
+        elif isinstance(values, list):
+            rows.extend(values)
+
+    if rows:
         columns_str = ", ".join(cfg["columns"])
-        cur.execute(f"INSERT OR IGNORE INTO {cfg['name']} ({columns_str}) VALUES ({placeholders})", values)
+        query = f"INSERT INTO {cfg['name']} ({columns_str}) VALUES %s ON CONFLICT DO NOTHING"
+        execute_values(cur, query, rows)
 
 # Load
 for cfg in TABLE_CONFIG:
@@ -113,7 +131,7 @@ def build_cache(cur, table_name, id_col, name_col="name"):
 
 
 ability_cache = build_cache(cur, "abilities", "ability_id")
-type_cache = build_cache(cur, "types", "type_id")
+type_cache = build_cache(cur, "pokemon_types_def", "type_id")
 move_cache = build_cache(cur, "moves", "move_id")
 move_learn_method_cache = build_cache(cur, "move_learn_methods", "move_learn_method_id")
 version_cache = build_cache(cur, "versions", "version_id")
@@ -258,18 +276,62 @@ for folder in os.listdir("./PokeData/api/v2/move"):
 
 
 # Batch inserts
-cur.executemany("INSERT OR IGNORE INTO pokemon_abilities (pokemon_id, ability_id) VALUES (?, ?)", ability_list)
-cur.executemany("INSERT OR IGNORE INTO pokemon_types (pokemon_id, type_id) VALUES (?, ?)", type_list)
-cur.executemany("INSERT OR IGNORE INTO pokemon_stats (pokemon_id, stat_id, value) VALUES (?, ?, ?)", stat_list)
-cur.executemany("INSERT OR IGNORE INTO pokemon_species (pokemon_id, species_id) VALUES (?, ?)", species_list)
-cur.executemany("INSERT OR IGNORE INTO pokemon_moves (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at) VALUES (?, ?, ?, ?, ?)",
-            move_list)
-cur.executemany("INSERT OR IGNORE INTO pokemon_encounters (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level) VALUES (?, ?, ?, ?, ?, ?)",
-    encounter_list)
-cur.executemany("INSERT OR IGNORE INTO species_egg_groups (species_id, egg_group_id) VALUES (?, ?)", egg_group_list)
-cur.executemany("INSERT OR IGNORE INTO move_types (move_id, type_id) VALUES (?, ?)", move_type_list)
-cur.executemany("INSERT OR IGNORE INTO species_colors (species_id, color_id) VALUES (?, ?)", color_list)
-cur.executemany("INSERT OR IGNORE INTO species_shapes (species_id, shape_id) VALUES (?, ?)", shape_list)
+execute_values(cur,
+    "INSERT INTO pokemon_abilities (pokemon_id, ability_id) VALUES %s ON CONFLICT DO NOTHING",
+    ability_list
+)
+
+execute_values(cur,
+    "INSERT INTO pokemon_types (pokemon_id, type_id) VALUES %s ON CONFLICT DO NOTHING",
+    type_list
+)
+
+execute_values(cur,
+    "INSERT INTO pokemon_stats (pokemon_id, stat_id, value) VALUES %s ON CONFLICT DO NOTHING",
+    stat_list
+)
+
+execute_values(cur,
+    "INSERT INTO pokemon_species (pokemon_id, species_id) VALUES %s ON CONFLICT DO NOTHING",
+    species_list
+)
+
+execute_values(cur,
+    """INSERT INTO pokemon_moves
+       (pokemon_id, move_id, move_learn_method_id, version_group_id, level_learned_at)
+       VALUES %s ON CONFLICT DO NOTHING""",
+    move_list
+)
+
+execute_values(cur,
+    """INSERT INTO pokemon_encounters
+       (pokemon_id, version_id, location_area_id, encounter_method_id, min_level, max_level)
+       VALUES %s ON CONFLICT DO NOTHING""",
+    encounter_list
+)
+
+execute_values(cur,
+    "INSERT INTO species_egg_groups (species_id, egg_group_id) VALUES %s ON CONFLICT DO NOTHING",
+    egg_group_list
+)
+
+execute_values(cur,
+    "INSERT INTO move_types (move_id, type_id) VALUES %s ON CONFLICT DO NOTHING",
+    move_type_list
+)
+
+execute_values(cur,
+    "INSERT INTO species_colors (species_id, color_id) VALUES %s ON CONFLICT DO NOTHING",
+    color_list
+)
+
+execute_values(cur,
+    "INSERT INTO species_shapes (species_id, shape_id) VALUES %s ON CONFLICT DO NOTHING",
+    shape_list
+)
+
+
+
 
 
 conn.commit()
