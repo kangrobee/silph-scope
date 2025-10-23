@@ -11,7 +11,7 @@ Silph Scope is also a tool for my own personal curiosity. As the name suggests, 
 
 Some example questions that I currently have:
 
-In Pokemon Emerald, can I catch a pokemon that can learn Cut in Petalburg Woods?
+- In Pokemon Emerald, can I catch a pokemon that can learn Cut in Petalburg Woods?
 - Are there any purple pokemon I can catch in Route 3 of Pokemon Black/White?
 - What is the median speed of all rock type pokemon?
 - What may have caused Registeel's usage rate to go up by 5% in Gen 3 OU?
